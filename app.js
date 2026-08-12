@@ -1282,6 +1282,10 @@ function initMatchingNights() {
       const nights =
         getNights();
 
+      const {
+        B
+      } = getT();
+
 
       nightsList.replaceChildren();
 
@@ -1296,10 +1300,44 @@ function initMatchingNights() {
           );
 
         empty.className =
-          'small muted';
+          'night-empty-state';
 
-        empty.textContent =
-          'Keine Matching Night angelegt';
+
+        const emptyIcon =
+          document.createElement(
+            'div'
+          );
+
+        emptyIcon.className =
+          'night-empty-icon';
+
+        emptyIcon.textContent =
+          '☾';
+
+
+        const emptyTitle =
+          document.createElement(
+            'strong'
+          );
+
+        emptyTitle.textContent =
+          'Noch keine Matching Night';
+
+
+        const emptyText =
+          document.createElement(
+            'span'
+          );
+
+        emptyText.textContent =
+          'Lege die erste Night an und trage anschließend die Lichter ein.';
+
+
+        empty.append(
+          emptyIcon,
+          emptyTitle,
+          emptyText
+        );
 
 
         nightsList.appendChild(
@@ -1318,12 +1356,11 @@ function initMatchingNights() {
 
           const card =
             document.createElement(
-              'div'
+              'article'
             );
 
-
           card.className =
-            'card stack night-card';
+            'night-card-v2';
 
 
           const head =
@@ -1331,13 +1368,29 @@ function initMatchingNights() {
               'div'
             );
 
-
           head.className =
-            'row';
+            'night-card-v2-head';
 
 
-          head.style.justifyContent =
-            'space-between';
+          const titleWrap =
+            document.createElement(
+              'div'
+            );
+
+          titleWrap.className =
+            'night-card-title-wrap';
+
+
+          const ceremony =
+            document.createElement(
+              'span'
+            );
+
+          ceremony.className =
+            'night-card-eyebrow';
+
+          ceremony.textContent =
+            `CEREMONY ${String(index + 1).padStart(2, '0')}`;
 
 
           const title =
@@ -1345,9 +1398,17 @@ function initMatchingNights() {
               'strong'
             );
 
+          title.className =
+            'night-card-title';
 
           title.textContent =
-            `Night ${index + 1}`;
+            `Matching Night ${index + 1}`;
+
+
+          titleWrap.append(
+            ceremony,
+            title
+          );
 
 
           const removeButton =
@@ -1355,19 +1416,19 @@ function initMatchingNights() {
               'button'
             );
 
+          removeButton.type =
+            'button';
 
           removeButton.className =
-            'danger small';
-
+            'night-delete-button';
 
           removeButton.textContent =
-            '✖';
-
+            '×';
 
           removeButton
             .setAttribute(
               'aria-label',
-              `Night ${index + 1} entfernen`
+              `Matching Night ${index + 1} löschen`
             );
 
 
@@ -1397,29 +1458,166 @@ function initMatchingNights() {
 
 
           head.append(
-            title,
+            titleWrap,
             removeButton
           );
 
 
-          const lights =
+          const lightCount =
+            Math.max(
+              0,
+              Number(
+                night.lights
+              ) || 0
+            );
+
+
+          const lightPanel =
             document.createElement(
               'div'
             );
 
-
-          lights.className =
-            'small muted';
-
-
-          lights.textContent =
-            `Lichter: ${Number(night.lights) || 0}`;
+          lightPanel.className =
+            'night-light-panel';
 
 
-          const table =
+          const lightInfo =
             document.createElement(
-              'table'
+              'div'
             );
+
+          lightInfo.className =
+            'night-light-info';
+
+
+          const lightNumber =
+            document.createElement(
+              'strong'
+            );
+
+          lightNumber.className =
+            'night-light-number';
+
+          lightNumber.textContent =
+            String(lightCount);
+
+
+          const lightCopy =
+            document.createElement(
+              'span'
+            );
+
+          lightCopy.textContent =
+            lightCount === 1
+              ? 'Licht'
+              : 'Lichter';
+
+
+          lightInfo.append(
+            lightNumber,
+            lightCopy
+          );
+
+
+          const meter =
+            document.createElement(
+              'div'
+            );
+
+          meter.className =
+            'night-light-meter';
+
+          meter.setAttribute(
+            'aria-label',
+            `${lightCount} von ${B.length || lightCount} Lichtern`
+          );
+
+
+          const maxLights =
+            Math.max(
+              B.length,
+              lightCount,
+              1
+            );
+
+
+          for (
+            let i = 0;
+            i < maxLights;
+            i++
+          ) {
+
+            const dot =
+              document.createElement(
+                'span'
+              );
+
+            dot.className =
+              i < lightCount
+                ? 'night-light-dot active'
+                : 'night-light-dot';
+
+            meter.appendChild(
+              dot
+            );
+          }
+
+
+          lightPanel.append(
+            lightInfo,
+            meter
+          );
+
+
+          const details =
+            document.createElement(
+              'details'
+            );
+
+          details.className =
+            'night-pairs-details';
+
+
+          const summary =
+            document.createElement(
+              'summary'
+            );
+
+
+          const summaryText =
+            document.createElement(
+              'span'
+            );
+
+          summaryText.textContent =
+            'Paarungen anzeigen';
+
+
+          const summaryCount =
+            document.createElement(
+              'span'
+            );
+
+          summaryCount.className =
+            'night-pair-count';
+
+          summaryCount.textContent =
+            `${Array.isArray(night.pairs) ? night.pairs.length : 0} Paare`;
+
+
+          summary.append(
+            summaryText,
+            summaryCount
+          );
+
+
+          const pairList =
+            document.createElement(
+              'div'
+            );
+
+          pairList.className =
+            'night-pair-list';
 
 
           (
@@ -1432,82 +1630,81 @@ function initMatchingNights() {
             .forEach(
               pair => {
 
-                const tr =
+                const row =
                   document.createElement(
-                    'tr'
+                    'div'
                   );
 
+                row.className =
+                  'night-pair-row';
 
-                const tdA =
+
+                const personA =
                   document.createElement(
-                    'td'
+                    'span'
                   );
 
+                personA.className =
+                  'night-pair-person';
 
-                const tdX =
-                  document.createElement(
-                    'td'
-                  );
-
-
-                const tdB =
-                  document.createElement(
-                    'td'
-                  );
-
-
-                tdA.textContent =
+                personA.textContent =
                   pair.A || '';
 
 
-                tdX.textContent =
+                const connector =
+                  document.createElement(
+                    'span'
+                  );
+
+                connector.className =
+                  'night-pair-connector';
+
+                connector.textContent =
                   '×';
 
 
-                if (
-                  pair.B ===
-                  'keine'
-                ) {
-
-                  const italic =
-                    document.createElement(
-                      'i'
-                    );
-
-
-                  italic.textContent =
-                    'Kein Partner';
-
-
-                  tdB.appendChild(
-                    italic
+                const personB =
+                  document.createElement(
+                    'span'
                   );
 
-                } else {
+                personB.className =
+                  pair.B === 'keine'
+                    ? 'night-pair-person no-partner'
+                    : 'night-pair-person';
 
-                  tdB.textContent =
-                    pair.B || '';
-                }
+                personB.textContent =
+                  pair.B === 'keine'
+                    ? 'Kein Partner'
+                    : (
+                        pair.B || ''
+                      );
 
 
-                tr.append(
-                  tdA,
-                  tdX,
-                  tdB
+                row.append(
+                  personA,
+                  connector,
+                  personB
                 );
 
 
-                table.appendChild(
-                  tr
+                pairList.appendChild(
+                  row
                 );
               }
             );
 
 
+          details.append(
+            summary,
+            pairList
+          );
+
+
           card.append(
             head,
-            lights,
-            table
+            lightPanel,
+            details
           );
 
 
@@ -1583,45 +1780,219 @@ function openNightEditor(
       'div'
     );
 
+  overlay.className =
+    'night-editor-overlay';
 
-  overlay.style.cssText =
-    'position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:10000;display:flex;align-items:center;justify-content:center;padding:15px';
+
+  const sheet =
+    document.createElement(
+      'section'
+    );
+
+  sheet.className =
+    'night-editor-sheet';
+
+  sheet.setAttribute(
+    'role',
+    'dialog'
+  );
+
+  sheet.setAttribute(
+    'aria-modal',
+    'true'
+  );
+
+  sheet.setAttribute(
+    'aria-label',
+    'Matching Night anlegen'
+  );
 
 
-  const box =
+  const closeEditor =
+    () => {
+
+      document.body.classList.remove(
+        'modal-open'
+      );
+
+      overlay.remove();
+    };
+
+
+  overlay.addEventListener(
+    'click',
+    event => {
+
+      if (
+        event.target === overlay
+      ) {
+
+        closeEditor();
+      }
+    }
+  );
+
+
+  const header =
+    document.createElement(
+      'div'
+    );
+
+  header.className =
+    'night-editor-header';
+
+
+  const headerCopy =
     document.createElement(
       'div'
     );
 
 
-  box.className =
-    'card stack';
+  const eyebrow =
+    document.createElement(
+      'span'
+    );
 
+  eyebrow.className =
+    'night-editor-eyebrow';
 
-  box.style.cssText =
-    'max-width:480px;width:100%;max-height:95vh;overflow-y:auto;background:#171a2b;padding:20px;border:1px solid #333';
+  eyebrow.textContent =
+    'CEREMONY SETUP';
 
 
   const title =
     document.createElement(
-      'h3'
+      'h2'
     );
 
-
   title.textContent =
-    'Matching Night';
+    `Matching Night ${getNights().length + 1}`;
 
 
-  title.style.marginTop =
-    '0';
+  const subline =
+    document.createElement(
+      'p'
+    );
+
+  subline.textContent =
+    mode === 'ONE_TO_ONE'
+      ? 'Ordne jeder Person aus Gruppe A genau eine Person aus Gruppe B zu.'
+      : 'Ordne die Paare zu. Genau eine Person aus Gruppe A bleibt ohne Sitzpartner.';
 
 
-  box.appendChild(
-    title
+  headerCopy.append(
+    eyebrow,
+    title,
+    subline
   );
 
 
+  const closeButton =
+    document.createElement(
+      'button'
+    );
+
+  closeButton.type =
+    'button';
+
+  closeButton.className =
+    'night-editor-close';
+
+  closeButton.textContent =
+    '×';
+
+  closeButton.setAttribute(
+    'aria-label',
+    'Matching Night schließen'
+  );
+
+  closeButton.addEventListener(
+    'click',
+    closeEditor
+  );
+
+
+  header.append(
+    headerCopy,
+    closeButton
+  );
+
+
+  const progress =
+    document.createElement(
+      'div'
+    );
+
+  progress.className =
+    'night-editor-progress';
+
+
+  const progressText =
+    document.createElement(
+      'span'
+    );
+
+  progressText.textContent =
+    `0 von ${A.length} Paarungen gewählt`;
+
+
+  const progressBar =
+    document.createElement(
+      'div'
+    );
+
+  progressBar.className =
+    'night-editor-progress-track';
+
+
+  const progressFill =
+    document.createElement(
+      'div'
+    );
+
+  progressFill.className =
+    'night-editor-progress-fill';
+
+
+  progressBar.appendChild(
+    progressFill
+  );
+
+  progress.append(
+    progressText,
+    progressBar
+  );
+
+
+  const pairList =
+    document.createElement(
+      'div'
+    );
+
+  pairList.className =
+    'night-editor-pair-list';
+
+
   const pairRows = [];
+
+
+  const updateProgress =
+    () => {
+
+      const selected =
+        pairRows.filter(
+          row =>
+            row.select.value
+        ).length;
+
+
+      progressText.textContent =
+        `${selected} von ${A.length} Paarungen gewählt`;
+
+
+      progressFill.style.width =
+        `${Math.min(100, (selected / A.length) * 100)}%`;
+    };
 
 
   const updateSelects =
@@ -1651,6 +2022,14 @@ function openNightEditor(
             .replaceChildren();
 
 
+          row.select.add(
+            new Option(
+              '- auswählen -',
+              ''
+            )
+          );
+
+
           if (
             mode ===
             'ONE_DOUBLE_B'
@@ -1660,15 +2039,6 @@ function openNightEditor(
               new Option(
                 'Kein Partner',
                 'keine'
-              )
-            );
-
-          } else {
-
-            row.select.add(
-              new Option(
-                '- auswählen -',
-                ''
               )
             );
           }
@@ -1709,36 +2079,80 @@ function openNightEditor(
             row.select.value =
               current;
           }
+
+
+          row.element.classList.toggle(
+            'selected',
+            Boolean(
+              row.select.value
+            )
+          );
         }
       );
+
+
+      updateProgress();
     };
 
 
   A.forEach(
-    nameA => {
+    (
+      nameA,
+      index
+    ) => {
 
       const row =
         document.createElement(
           'div'
         );
 
+      row.className =
+        'night-editor-pair-row';
 
-      row.style.cssText =
-        'display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px';
 
-
-      const label =
+      const number =
         document.createElement(
           'span'
         );
 
+      number.className =
+        'night-editor-pair-number';
 
-      label.textContent =
+      number.textContent =
+        String(index + 1);
+
+
+      const label =
+        document.createElement(
+          'div'
+        );
+
+      label.className =
+        'night-editor-person';
+
+
+      const labelGroup =
+        document.createElement(
+          'span'
+        );
+
+      labelGroup.textContent =
+        'GRUPPE A';
+
+
+      const labelName =
+        document.createElement(
+          'strong'
+        );
+
+      labelName.textContent =
         nameA;
 
 
-      label.style.cssText =
-        'font-size:14px;font-weight:bold;flex:1';
+      label.append(
+        labelGroup,
+        labelName
+      );
 
 
       const select =
@@ -1746,9 +2160,13 @@ function openNightEditor(
           'select'
         );
 
+      select.className =
+        'night-editor-select';
 
-      select.style.cssText =
-        'flex:1.5;padding:8px';
+      select.setAttribute(
+        'aria-label',
+        `Partner für ${nameA}`
+      );
 
 
       select.addEventListener(
@@ -1758,12 +2176,13 @@ function openNightEditor(
 
 
       row.append(
+        number,
         label,
         select
       );
 
 
-      box.appendChild(
+      pairList.appendChild(
         row
       );
 
@@ -1773,7 +2192,10 @@ function openNightEditor(
         A:
           nameA,
 
-        select
+        select,
+
+        element:
+          row
       });
     }
   );
@@ -1782,28 +2204,59 @@ function openNightEditor(
   updateSelects();
 
 
-  const lightRow =
+  const lightSection =
+    document.createElement(
+      'div'
+    );
+
+  lightSection.className =
+    'night-editor-light-section';
+
+
+  const lightCopy =
     document.createElement(
       'div'
     );
 
 
-  lightRow.className =
-    'row';
-
-
-  lightRow.style.cssText =
-    'margin-top:15px;padding-top:15px;border-top:1px solid #333';
-
-
-  const lightLabel =
+  const lightEyebrow =
     document.createElement(
       'span'
     );
 
+  lightEyebrow.className =
+    'night-editor-eyebrow';
 
-  lightLabel.textContent =
-    'Lichter:';
+  lightEyebrow.textContent =
+    'ERGEBNIS';
+
+
+  const lightTitle =
+    document.createElement(
+      'strong'
+    );
+
+  lightTitle.textContent =
+    'Wie viele Lichter gab es?';
+
+
+  const lightHint =
+    document.createElement(
+      'span'
+    );
+
+  lightHint.className =
+    'night-editor-light-hint';
+
+  lightHint.textContent =
+    'Wähle die offiziell angezeigte Anzahl.';
+
+
+  lightCopy.append(
+    lightEyebrow,
+    lightTitle,
+    lightHint
+  );
 
 
   const lightSelect =
@@ -1811,9 +2264,8 @@ function openNightEditor(
       'select'
     );
 
-
-  lightSelect.style.width =
-    '100px';
+  lightSelect.className =
+    'night-editor-light-select';
 
 
   for (
@@ -1827,54 +2279,28 @@ function openNightEditor(
 
     lightSelect.add(
       new Option(
-        String(i),
+        i === 1
+          ? '1 Licht'
+          : `${i} Lichter`,
         String(i)
       )
     );
   }
 
 
-  lightRow.append(
-    lightLabel,
+  lightSection.append(
+    lightCopy,
     lightSelect
   );
 
 
-  box.appendChild(
-    lightRow
-  );
-
-
-  const buttonRow =
+  const footer =
     document.createElement(
       'div'
     );
 
-
-  buttonRow.className =
-    'row';
-
-
-  buttonRow.style.marginTop =
-    '20px';
-
-
-  const saveButton =
-    document.createElement(
-      'button'
-    );
-
-
-  saveButton.className =
-    'primary';
-
-
-  saveButton.style.flex =
-    '1';
-
-
-  saveButton.textContent =
-    'Speichern';
+  footer.className =
+    'night-editor-footer';
 
 
   const cancelButton =
@@ -1882,25 +2308,34 @@ function openNightEditor(
       'button'
     );
 
+  cancelButton.type =
+    'button';
 
   cancelButton.className =
-    'ghost';
-
-
-  cancelButton.style.flex =
-    '1';
-
+    'night-editor-cancel';
 
   cancelButton.textContent =
     'Abbrechen';
 
+  cancelButton.addEventListener(
+    'click',
+    closeEditor
+  );
 
-  cancelButton
-    .addEventListener(
-      'click',
-      () =>
-        overlay.remove()
+
+  const saveButton =
+    document.createElement(
+      'button'
     );
+
+  saveButton.type =
+    'button';
+
+  saveButton.className =
+    'night-editor-save';
+
+  saveButton.textContent =
+    'Night speichern';
 
 
   saveButton
@@ -1981,6 +2416,21 @@ function openNightEditor(
           'ONE_DOUBLE_B'
         ) {
 
+          if (
+            pairs.some(
+              pair =>
+                !pair.B
+            )
+          ) {
+
+            alert(
+              'Bitte für jede A-Person einen Partner oder „Kein Partner“ auswählen.'
+            );
+
+            return;
+          }
+
+
           const noPartnerCount =
             pairs.filter(
               pair =>
@@ -2038,7 +2488,7 @@ function openNightEditor(
         );
 
 
-        overlay.remove();
+        closeEditor();
 
 
         onSaved();
@@ -2046,19 +2496,28 @@ function openNightEditor(
     );
 
 
-  buttonRow.append(
-    saveButton,
-    cancelButton
+  footer.append(
+    cancelButton,
+    saveButton
   );
 
 
-  box.appendChild(
-    buttonRow
+  sheet.append(
+    header,
+    progress,
+    pairList,
+    lightSection,
+    footer
   );
 
 
   overlay.appendChild(
-    box
+    sheet
+  );
+
+
+  document.body.classList.add(
+    'modal-open'
   );
 
 
@@ -2368,7 +2827,6 @@ function renderOrakel() {
         'div'
       );
 
-
     card.className =
       'card stack oracle-placeholder';
 
@@ -2378,10 +2836,8 @@ function renderOrakel() {
         'div'
       );
 
-
     icon.className =
       'oracle-icon';
-
 
     icon.textContent =
       '🔮';
@@ -2392,7 +2848,6 @@ function renderOrakel() {
         'h3'
       );
 
-
     title.textContent =
       'Das Orakel schläft noch...';
 
@@ -2402,10 +2857,8 @@ function renderOrakel() {
         'p'
       );
 
-
     text.className =
       'small muted';
-
 
     text.textContent =
       'Berechne zuerst die Ergebnisse, damit die Daten analysiert werden können.';
@@ -2483,7 +2936,7 @@ function renderOrakel() {
   );
 
 
-  const topPairs =
+  const sortedPositive =
     pairs
       .filter(
         pair =>
@@ -2497,43 +2950,260 @@ function renderOrakel() {
         ) =>
           b.prob -
           a.prob
-      )
-      .slice(
-        0,
-        5
       );
 
 
-  const deadPairs =
-    pairs
-      .filter(
-        pair =>
-          pair.count ===
-          0n
-      )
-      .slice(
-        0,
-        12
-      );
-
-
-  const heading =
-    document.createElement(
-      'h2'
+  const topPairs =
+    sortedPositive.slice(
+      0,
+      5
     );
 
 
-  heading.textContent =
-    '🔮 Match-Orakel';
+  const deadPairs =
+    pairs.filter(
+      pair =>
+        pair.count ===
+        0n
+    );
 
 
-  heading.style.marginBottom =
-    '20px';
+  const confirmedPairs =
+    pairs.filter(
+      pair =>
+        pair.prob >=
+        100
+    );
+
+
+  const formatTotal =
+    value =>
+      value
+        .toString()
+        .replace(
+          /\B(?=(\d{3})+(?!\d))/g,
+          '.'
+        );
+
+
+  const stats =
+    document.createElement(
+      'div'
+    );
+
+  stats.className =
+    'oracle-stats-grid';
+
+
+  const statsData = [
+    {
+      label:
+        'Mögliche Lösungen',
+      value:
+        formatTotal(total),
+      tone:
+        'blue'
+    },
+    {
+      label:
+        'Sichere Matches',
+      value:
+        String(
+          confirmedPairs.length
+        ),
+      tone:
+        'gold'
+    },
+    {
+      label:
+        'Ausgeschlossen',
+      value:
+        String(
+          deadPairs.length
+        ),
+      tone:
+        'red'
+    }
+  ];
+
+
+  statsData.forEach(
+    item => {
+
+      const card =
+        document.createElement(
+          'div'
+        );
+
+      card.className =
+        `oracle-stat-card ${item.tone}`;
+
+
+      const value =
+        document.createElement(
+          'strong'
+        );
+
+      value.textContent =
+        item.value;
+
+
+      const label =
+        document.createElement(
+          'span'
+        );
+
+      label.textContent =
+        item.label;
+
+
+      card.append(
+        value,
+        label
+      );
+
+
+      stats.appendChild(
+        card
+      );
+    }
+  );
 
 
   orakelBox.appendChild(
-    heading
+    stats
   );
+
+
+  if (
+    topPairs.length
+  ) {
+
+    const best =
+      topPairs[0];
+
+
+    const hero =
+      document.createElement(
+        'div'
+      );
+
+    hero.className =
+      best.prob >= 100
+        ? 'oracle-best-card perfect'
+        : 'oracle-best-card';
+
+
+    const heroCopy =
+      document.createElement(
+        'div'
+      );
+
+    heroCopy.className =
+      'oracle-best-copy';
+
+
+    const heroLabel =
+      document.createElement(
+        'span'
+      );
+
+    heroLabel.className =
+      'oracle-best-label';
+
+    heroLabel.textContent =
+      best.prob >= 100
+        ? 'SICHERES PERFECT MATCH'
+        : 'STÄRKSTE VERBINDUNG';
+
+
+    const heroNames =
+      document.createElement(
+        'strong'
+      );
+
+    heroNames.textContent =
+      `${best.nameA} × ${best.nameB}`;
+
+
+    const heroText =
+      document.createElement(
+        'span'
+      );
+
+    heroText.textContent =
+      best.prob >= 100
+        ? 'Diese Paarung ist durch die aktuellen Daten eindeutig.'
+        : 'Aktuell die wahrscheinlichste Paarung im Solver.';
+
+
+    heroCopy.append(
+      heroLabel,
+      heroNames,
+      heroText
+    );
+
+
+    const heroRing =
+      document.createElement(
+        'div'
+      );
+
+    heroRing.className =
+      'oracle-prob-ring';
+
+    heroRing.style.setProperty(
+      '--oracle-prob',
+      `${Math.max(0, Math.min(100, best.prob)) * 3.6}deg`
+    );
+
+
+    const heroRingInner =
+      document.createElement(
+        'div'
+      );
+
+
+    const heroPercent =
+      document.createElement(
+        'strong'
+      );
+
+    heroPercent.textContent =
+      best.prob >= 100
+        ? '100%'
+        : `${best.prob.toFixed(1)}%`;
+
+
+    const heroPercentLabel =
+      document.createElement(
+        'span'
+      );
+
+    heroPercentLabel.textContent =
+      'Chance';
+
+
+    heroRingInner.append(
+      heroPercent,
+      heroPercentLabel
+    );
+
+    heroRing.appendChild(
+      heroRingInner
+    );
+
+
+    hero.append(
+      heroCopy,
+      heroRing
+    );
+
+
+    orakelBox.appendChild(
+      hero
+    );
+  }
 
 
   const hotCard =
@@ -2541,9 +3211,17 @@ function renderOrakel() {
       'div'
     );
 
-
   hotCard.className =
-    'card stack oracle-section-gold';
+    'oracle-ranking-card';
+
+
+  const hotHead =
+    document.createElement(
+      'div'
+    );
+
+  hotHead.className =
+    'oracle-section-head';
 
 
   const hotTitle =
@@ -2551,17 +3229,27 @@ function renderOrakel() {
       'strong'
     );
 
-
-  hotTitle.style.cssText =
-    'color:#ffd700;text-transform:uppercase;font-size:12px';
-
-
   hotTitle.textContent =
-    '🔥 Heißeste Tipps (Top 5)';
+    'Top 5 Matches';
+
+
+  const hotSub =
+    document.createElement(
+      'span'
+    );
+
+  hotSub.textContent =
+    'Nach aktueller Wahrscheinlichkeit';
+
+
+  hotHead.append(
+    hotTitle,
+    hotSub
+  );
 
 
   hotCard.appendChild(
-    hotTitle
+    hotHead
   );
 
 
@@ -2576,20 +3264,10 @@ function renderOrakel() {
           'div'
         );
 
-
       row.className =
-        `row oracle-card${
-          pair.prob >=
-          100
-            ? ' perfect-match'
-            : ''
-        }`;
-
-
-      const left =
-        document.createElement(
-          'span'
-        );
+        pair.prob >= 100
+          ? 'oracle-rank-row perfect'
+          : 'oracle-rank-row';
 
 
       const rank =
@@ -2597,58 +3275,78 @@ function renderOrakel() {
           'span'
         );
 
-
-      rank.style.cssText =
-        'opacity:.5;margin-right:8px';
-
+      rank.className =
+        'oracle-rank-number';
 
       rank.textContent =
-        `#${index + 1}`;
+        String(index + 1);
+
+
+      const content =
+        document.createElement(
+          'div'
+        );
+
+      content.className =
+        'oracle-rank-content';
 
 
       const names =
         document.createElement(
-          'b'
+          'strong'
         );
 
-
       names.textContent =
-        `${pair.nameA} & ${pair.nameB}`;
+        `${pair.nameA} × ${pair.nameB}`;
 
 
-      left.append(
-        rank,
-        names
-      );
+      const track =
+        document.createElement(
+          'div'
+        );
+
+      track.className =
+        'oracle-prob-track';
 
 
-      const right =
+      const fill =
         document.createElement(
           'span'
         );
 
-
-      right.style.cssText =
-        `color:${
-          pair.prob >=
-          100
-            ? '#ffd700'
-            : '#4a82ff'
-        };font-weight:bold`;
+      fill.style.width =
+        `${Math.max(2, Math.min(100, pair.prob))}%`;
 
 
-      right.textContent =
-        pair.prob >=
-        100
+      track.appendChild(
+        fill
+      );
 
+
+      content.append(
+        names,
+        track
+      );
+
+
+      const percent =
+        document.createElement(
+          'strong'
+        );
+
+      percent.className =
+        'oracle-rank-percent';
+
+      percent.textContent =
+        pair.prob >= 100
           ? 'MATCH'
-
           : `${pair.prob.toFixed(1)}%`;
 
 
       row.append(
-        left,
-        right
+        rank,
+        content,
+        percent
       );
 
 
@@ -2669,9 +3367,17 @@ function renderOrakel() {
       'div'
     );
 
-
   coldCard.className =
-    'card stack oracle-section-cold';
+    'oracle-cold-card';
+
+
+  const coldHead =
+    document.createElement(
+      'div'
+    );
+
+  coldHead.className =
+    'oracle-section-head';
 
 
   const coldTitle =
@@ -2679,13 +3385,25 @@ function renderOrakel() {
       'strong'
     );
 
-
-  coldTitle.style.cssText =
-    'color:#ff4f4f;text-transform:uppercase;font-size:12px';
-
-
   coldTitle.textContent =
-    '❄️ Kälter als Eis (0%)';
+    'Ausgeschlossene Paare';
+
+
+  const coldSub =
+    document.createElement(
+      'span'
+    );
+
+  coldSub.textContent =
+    deadPairs.length
+      ? `${deadPairs.length} Paarungen liegen bei 0 %`
+      : 'Aktuell ist noch kein Paar vollständig ausgeschlossen.';
+
+
+  coldHead.append(
+    coldTitle,
+    coldSub
+  );
 
 
   const coldGrid =
@@ -2693,37 +3411,39 @@ function renderOrakel() {
       'div'
     );
 
-
   coldGrid.className =
     'cold-grid';
 
 
-  deadPairs.forEach(
-    pair => {
+  deadPairs
+    .slice(
+      0,
+      18
+    )
+    .forEach(
+      pair => {
 
-      const item =
-        document.createElement(
-          'div'
+        const item =
+          document.createElement(
+            'div'
+          );
+
+        item.className =
+          'cold-pair';
+
+        item.textContent =
+          `${pair.nameA} × ${pair.nameB}`;
+
+
+        coldGrid.appendChild(
+          item
         );
-
-
-      item.className =
-        'cold-pair';
-
-
-      item.textContent =
-        `${pair.nameA} × ${pair.nameB}`;
-
-
-      coldGrid.appendChild(
-        item
-      );
-    }
-  );
+      }
+    );
 
 
   coldCard.append(
-    coldTitle,
+    coldHead,
     coldGrid
   );
 
@@ -3723,32 +4443,104 @@ function renderResults(
     .replaceChildren();
 
 
-  const headingRow =
+  const formatTotal =
+    value =>
+      value
+        .toString()
+        .replace(
+          /\B(?=(\d{3})+(?!\d))/g,
+          '.'
+        );
+
+
+  const overview =
     document.createElement(
       'div'
     );
 
+  overview.className =
+    total === 0n
+      ? 'result-overview impossible'
+      : 'result-overview';
 
-  headingRow.className =
-    'row';
 
-
-  const heading =
+  const overviewCopy =
     document.createElement(
-      'h3'
+      'div'
     );
 
-
-  heading.textContent =
-    'Ergebnis';
-
-
-  heading.style.marginBottom =
-    '0';
+  overviewCopy.className =
+    'result-overview-copy';
 
 
-  headingRow.appendChild(
-    heading
+  const overviewLabel =
+    document.createElement(
+      'span'
+    );
+
+  overviewLabel.textContent =
+    'MÖGLICHE LÖSUNGEN';
+
+
+  const overviewNumber =
+    document.createElement(
+      'strong'
+    );
+
+  overviewNumber.textContent =
+    total === 0n
+      ? '0'
+      : formatTotal(total);
+
+
+  const overviewText =
+    document.createElement(
+      'span'
+    );
+
+  overviewText.textContent =
+    total === 0n
+      ? 'Aktuelle Eingaben oder Simulation lassen keine Lösung zu.'
+      : total === 1n
+        ? 'Der Solver hat genau eine mögliche Gesamtlösung gefunden.'
+        : 'Diese Gesamtlösungen passen aktuell zu allen eingetragenen Daten.';
+
+
+  overviewCopy.append(
+    overviewLabel,
+    overviewNumber,
+    overviewText
+  );
+
+
+  const state =
+    document.createElement(
+      'span'
+    );
+
+  state.className =
+    total === 0n
+      ? 'result-state danger'
+      : total === 1n
+        ? 'result-state success'
+        : 'result-state';
+
+  state.textContent =
+    total === 0n
+      ? 'Widerspruch'
+      : total === 1n
+        ? 'Eindeutig'
+        : 'Offen';
+
+
+  overview.append(
+    overviewCopy,
+    state
+  );
+
+
+  summaryBox.appendChild(
+    overview
   );
 
 
@@ -3756,62 +4548,70 @@ function renderResults(
     virtualMatches.length
   ) {
 
-    const simulationTag =
+    const simulation =
+      document.createElement(
+        'div'
+      );
+
+    simulation.className =
+      'simulation-panel';
+
+
+    const simulationHead =
+      document.createElement(
+        'div'
+      );
+
+    simulationHead.className =
+      'simulation-head';
+
+
+    const simulationTitle =
+      document.createElement(
+        'div'
+      );
+
+
+    const simulationBadge =
       document.createElement(
         'span'
       );
 
+    simulationBadge.className =
+      'simulation-badge';
 
-    simulationTag.className =
-      'tag warning';
-
-
-    simulationTag.textContent =
-      'SIMULATION';
+    simulationBadge.textContent =
+      'TESTMODUS';
 
 
-    headingRow.appendChild(
-      simulationTag
+    const simulationCopy =
+      document.createElement(
+        'span'
+      );
+
+    simulationCopy.textContent =
+      'Virtuell angenommene Perfect Matches';
+
+
+    simulationTitle.append(
+      simulationBadge,
+      simulationCopy
     );
-  }
 
-
-  const totalText =
-    document.createElement(
-      'div'
-    );
-
-
-  totalText.textContent =
-    total === 0n
-
-      ? 'Keine Kombination gefunden'
-
-      : `${total.toString()} Kombinationen`;
-
-
-  summaryBox.append(
-    headingRow,
-    totalText
-  );
-
-
-  if (
-    virtualMatches.length
-  ) {
 
     const stopButton =
       document.createElement(
         'button'
       );
 
+    stopButton.type =
+      'button';
 
     stopButton.className =
-      'small ghost';
-
+      'simulation-stop';
 
     stopButton.textContent =
-      'Simulation beenden';
+      'Beenden';
 
 
     stopButton
@@ -3832,8 +4632,90 @@ function renderResults(
       );
 
 
-    summaryBox.appendChild(
+    simulationHead.append(
+      simulationTitle,
       stopButton
+    );
+
+
+    const simulationPairs =
+      document.createElement(
+        'div'
+      );
+
+    simulationPairs.className =
+      'simulation-pairs';
+
+
+    virtualMatches.forEach(
+      match => {
+
+        const pair =
+          document.createElement(
+            'span'
+          );
+
+        pair.textContent =
+          `${match.A} × ${match.B}`;
+
+        simulationPairs.appendChild(
+          pair
+        );
+      }
+    );
+
+
+    simulation.append(
+      simulationHead,
+      simulationPairs
+    );
+
+
+    summaryBox.appendChild(
+      simulation
+    );
+  }
+
+
+  if (
+    total > 0n
+  ) {
+
+    const matrixHint =
+      document.createElement(
+        'div'
+      );
+
+    matrixHint.className =
+      'matrix-hint';
+
+
+    const hintIcon =
+      document.createElement(
+        'span'
+      );
+
+    hintIcon.textContent =
+      '✦';
+
+
+    const hintText =
+      document.createElement(
+        'span'
+      );
+
+    hintText.textContent =
+      'Tippe auf eine Prozentzahl, um dieses Paar virtuell als Perfect Match zu testen.';
+
+
+    matrixHint.append(
+      hintIcon,
+      hintText
+    );
+
+
+    summaryBox.appendChild(
+      matrixHint
     );
   }
 
@@ -3843,7 +4725,6 @@ function renderResults(
       'div'
     );
 
-
   container.className =
     'ayto-table-container';
 
@@ -3852,7 +4733,6 @@ function renderResults(
     document.createElement(
       'table'
     );
-
 
   table.className =
     'ayto-table';
@@ -3864,10 +4744,20 @@ function renderResults(
     );
 
 
-  headRow.appendChild(
+  const corner =
     document.createElement(
       'th'
-    )
+    );
+
+  corner.className =
+    'matrix-corner';
+
+  corner.textContent =
+    'A / B';
+
+
+  headRow.appendChild(
+    corner
   );
 
 
@@ -3878,7 +4768,6 @@ function renderResults(
         document.createElement(
           'th'
         );
-
 
       th.textContent =
         nameB;
@@ -3913,10 +4802,8 @@ function renderResults(
           'td'
         );
 
-
       nameCell.className =
         'a-name';
-
 
       nameCell.textContent =
         nameA;
@@ -3968,21 +4855,21 @@ function renderResults(
             );
 
 
+          cell.setAttribute(
+            'aria-label',
+            `${nameA} mit ${nameB}: ${probability.toFixed(2)} Prozent`
+          );
+
+
           if (
             isVirtual
           ) {
 
-            cell.style.cssText =
-              'background:#00ffaa;color:#000;font-weight:bold;border:2px solid #fff';
-
+            cell.className =
+              'matrix-cell matrix-fixed matrix-cell-clickable';
 
             cell.textContent =
               'FIXED';
-
-
-            cell.classList.add(
-              'matrix-cell-clickable'
-            );
 
 
             cell.addEventListener(
@@ -3999,17 +4886,11 @@ function renderResults(
             100
           ) {
 
-            cell.style.cssText =
-              'background:#ffd700;color:#000;font-weight:bold';
-
+            cell.className =
+              'matrix-cell matrix-match matrix-cell-clickable';
 
             cell.textContent =
               'MATCH';
-
-
-            cell.classList.add(
-              'matrix-cell-clickable'
-            );
 
 
             cell.addEventListener(
@@ -4027,33 +4908,50 @@ function renderResults(
           ) {
 
             cell.className =
-              'no-match';
-
+              'matrix-cell no-match';
 
             cell.textContent =
-              'No Match';
+              '0%';
 
           } else {
 
             const hue =
-              260 -
+              250 -
               (
                 probability *
-                2.5
+                2.15
               );
 
 
-            cell.style.cssText =
-              `background:hsl(${hue},70%,25%);color:white`;
+            cell.className =
+              'matrix-cell matrix-prob matrix-cell-clickable';
 
+            cell.style.setProperty(
+              '--cell-hue',
+              String(
+                Math.max(
+                  25,
+                  hue
+                )
+              )
+            );
+
+            cell.style.setProperty(
+              '--cell-strength',
+              String(
+                Math.max(
+                  .12,
+                  Math.min(
+                    .72,
+                    probability /
+                      100
+                  )
+                )
+              )
+            );
 
             cell.textContent =
               `${probability.toFixed(2)}%`;
-
-
-            cell.classList.add(
-              'matrix-cell-clickable'
-            );
 
 
             cell.addEventListener(
