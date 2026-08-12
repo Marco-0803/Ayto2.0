@@ -1,198 +1,839 @@
 <!doctype html>
 <html lang="de">
+
 <head>
-  <meta name="app-version" content="2026.08.12.1">
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#346FFF" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="AYTO Solver 2026" />
+  <meta name="app-version" content="2026.08.12.3">
+
+  <meta charset="utf-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  >
+
+  <meta
+    name="theme-color"
+    content="#090b14"
+  >
+
+  <meta
+    name="apple-mobile-web-app-capable"
+    content="yes"
+  >
+
+  <meta
+    name="apple-mobile-web-app-status-bar-style"
+    content="black-translucent"
+  >
+
+  <meta
+    name="apple-mobile-web-app-title"
+    content="AYTO Solver 2026"
+  >
+
   <title>AYTO Solver 2026</title>
 
-  <link rel="manifest" href="manifest.json" />
-  <link rel="apple-touch-icon" href="HeaderIcon.png" />
-  <link rel="stylesheet" href="style.css?v=2026.08.12.1" />
+  <link
+    rel="manifest"
+    href="manifest.json"
+  >
+
+  <link
+    rel="apple-touch-icon"
+    href="HeaderIcon.png"
+  >
+
+  <link
+    rel="stylesheet"
+    href="style.css?v=2026.08.12.3"
+  >
 </head>
+
+
 <body>
-  <header>
-    <img class="logo" src="HeaderIcon.png" alt="Are You The One Logo" />
-    <h1>AYTO Solver 2026</h1>
-    <div class="small">Installierbare PWA • Offline nutzbar • /Ayto/</div>
+
+
+  <!-- =========================
+       APP HEADER
+       ========================= -->
+
+  <header class="app-header">
+
+    <div class="brand">
+
+      <div class="brand-logo-wrap">
+
+        <img
+          src="HeaderIcon.png"
+          class="brand-logo"
+          alt="AYTO Solver"
+        >
+
+      </div>
+
+
+      <div class="brand-copy">
+
+        <span class="brand-small">
+          AYTO SOLVER
+        </span>
+
+        <strong class="brand-name">
+          Match Lab
+        </strong>
+
+      </div>
+
+    </div>
+
+
+    <div class="season-pill">
+      2026 VIP
+    </div>
+
   </header>
 
+
+
+  <!-- =========================
+       MAIN
+       ========================= -->
+
   <main>
-    <section id="page-teilnehmer" class="page active">
-      <div class="card stack">
-        <h2>👥 Teilnehmer</h2>
 
-        <div class="row action-row">
-          <button id="prefill" class="ghost">🔁 Staffel 2026 VIP vorbelegen</button>
-          <button id="addA" class="ghost">+ A hinzufügen</button>
-          <button id="addB" class="ghost">+ B hinzufügen</button>
+
+    <!-- =========================
+         TEILNEHMER
+         ========================= -->
+
+    <section
+      id="page-teilnehmer"
+      class="page active"
+    >
+
+      <div class="page-head">
+
+        <div class="page-head-icon">
+          👥
         </div>
 
-        <div class="participant-groups">
-          <div class="stack participant-group">
-            <label>Gruppe A</label>
-            <div id="listA" class="list"></div>
-          </div>
+        <div>
 
-          <div class="stack participant-group">
-            <label>Gruppe B</label>
-            <div id="listB" class="list"></div>
-          </div>
+          <span class="eyebrow">
+            SETUP
+          </span>
+
+          <h1>
+            Teilnehmer
+          </h1>
+
+          <p>
+            Staffel laden oder eigene Teilnehmer eintragen.
+          </p>
+
         </div>
 
-        <div id="warnBalance" class="warning small" style="display:none"></div>
       </div>
+
+
+
+      <div class="hero-card">
+
+        <div class="hero-glow"></div>
+
+
+        <div class="hero-top">
+
+          <div class="hero-symbol">
+            ✦
+          </div>
+
+
+          <div>
+
+            <span class="eyebrow pink">
+              QUICK SETUP
+            </span>
+
+            <h2>
+              Realitystars in Love 2026
+            </h2>
+
+            <p>
+              Alle Teilnehmer mit einem Tipp übernehmen.
+            </p>
+
+          </div>
+
+        </div>
+
+
+        <button
+          id="prefill"
+          class="prefill-button"
+        >
+          Staffel 2026 VIP vorbelegen
+        </button>
+
+
+        <div class="quick-actions">
+
+          <button
+            id="addA"
+            class="quick-button"
+          >
+            <span class="quick-plus">
+              +
+            </span>
+
+            Person A
+          </button>
+
+
+          <button
+            id="addB"
+            class="quick-button"
+          >
+            <span class="quick-plus">
+              +
+            </span>
+
+            Person B
+          </button>
+
+        </div>
+
+      </div>
+
+
+
+      <div class="participant-grid">
+
+
+        <!-- Gruppe A -->
+
+        <div class="group-card">
+
+          <div class="group-card-head">
+
+            <div>
+
+              <span class="group-caption">
+                GRUPPE
+              </span>
+
+              <h2>
+                A
+              </h2>
+
+            </div>
+
+
+            <div class="group-marker group-marker-a">
+            </div>
+
+          </div>
+
+
+          <div
+            id="listA"
+            class="list participant-list"
+          >
+          </div>
+
+        </div>
+
+
+
+        <!-- Gruppe B -->
+
+        <div class="group-card">
+
+          <div class="group-card-head">
+
+            <div>
+
+              <span class="group-caption">
+                GRUPPE
+              </span>
+
+              <h2>
+                B
+              </h2>
+
+            </div>
+
+
+            <div class="group-marker group-marker-b">
+            </div>
+
+          </div>
+
+
+          <div
+            id="listB"
+            class="list participant-list"
+          >
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div
+        id="warnBalance"
+        class="warning-card small"
+        style="display:none"
+      >
+      </div>
+
     </section>
 
-    <section id="page-matchbox" class="page">
-      <div class="card stack">
-        <h2>💞 Matchbox</h2>
+
+
+    <!-- =========================
+         MATCHBOX
+         ========================= -->
+
+    <section
+      id="page-matchbox"
+      class="page"
+    >
+
+      <div class="page-head">
+
+        <div class="page-head-icon">
+          ♥
+        </div>
+
+        <div>
+
+          <span class="eyebrow">
+            TRUTH BOOTH
+          </span>
+
+          <h1>
+            Matchbox
+          </h1>
+
+          <p>
+            Perfect Match, No Match oder verkauft eintragen.
+          </p>
+
+        </div>
+
+      </div>
+
+
+      <div class="card content-card">
 
         <div class="matchbox-form">
-          <select id="tbA" aria-label="Person aus Gruppe A"></select>
-          <span class="pair-x">×</span>
-          <select id="tbB" aria-label="Person aus Gruppe B"></select>
 
-          <select id="tbType" aria-label="Matchbox Ergebnis">
-            <option value="PM">Perfect Match</option>
-            <option value="NM">No Match</option>
-            <option value="SOLD">Verkauft (nur markieren)</option>
+          <div class="field-label">
+            Person A
+          </div>
+
+          <select
+            id="tbA"
+            aria-label="Person aus Gruppe A"
+          >
           </select>
 
-          <button id="addTB">Hinzufügen</button>
+
+          <div class="match-divider">
+            ×
+          </div>
+
+
+          <div class="field-label">
+            Person B
+          </div>
+
+          <select
+            id="tbB"
+            aria-label="Person aus Gruppe B"
+          >
+          </select>
+
+
+          <div class="field-label result-label">
+            Ergebnis
+          </div>
+
+          <select
+            id="tbType"
+            aria-label="Matchbox Ergebnis"
+          >
+
+            <option value="PM">
+              Perfect Match
+            </option>
+
+            <option value="NM">
+              No Match
+            </option>
+
+            <option value="SOLD">
+              Verkauft
+            </option>
+
+          </select>
+
+
+          <button
+            id="addTB"
+            class="primary"
+          >
+            Ergebnis speichern
+          </button>
+
         </div>
 
-        <div id="tbList" class="list" style="margin-top:6px"></div>
+
+        <div
+          id="tbList"
+          class="list matchbox-list"
+        >
+        </div>
+
       </div>
+
     </section>
 
-    <section id="page-entscheidungen" class="page">
-      <div class="card stack">
-        <h2>🌙 Matchingnight</h2>
 
-        <div id="balanceHint" class="small muted">
+
+    <!-- =========================
+         MATCHING NIGHT
+         ========================= -->
+
+    <section
+      id="page-entscheidungen"
+      class="page"
+    >
+
+      <div class="page-head">
+
+        <div class="page-head-icon">
+          ☾
+        </div>
+
+        <div>
+
+          <span class="eyebrow">
+            CEREMONY
+          </span>
+
+          <h1>
+            Matching Nights
+          </h1>
+
+          <p>
+            Paarungen und Anzahl der Lichter speichern.
+          </p>
+
+        </div>
+
+      </div>
+
+
+      <div class="card content-card">
+
+        <div
+          id="balanceHint"
+          class="info-box small muted"
+        >
           Regel wird anhand der Gruppengröße automatisch erkannt.
         </div>
 
-        <div class="row">
-          <button id="addNight" class="ghost">+ Night anlegen</button>
+
+        <button
+          id="addNight"
+          class="primary"
+        >
+          + Neue Matching Night
+        </button>
+
+
+        <div
+          id="nights"
+          class="list nights-list"
+        >
         </div>
 
-        <div id="nights" class="list" style="margin-top:6px"></div>
 
-        <div class="row action-row" style="margin-top:8px">
-          <button id="exportBtn">Export</button>
+        <div class="data-actions">
+
+          <button
+            id="exportBtn"
+            class="ghost"
+          >
+            Export
+          </button>
+
 
           <input
             type="file"
             id="importFile"
             accept="application/json,.json"
             style="display:none"
-          />
+          >
 
-          <button id="importBtn">Import</button>
-          <button id="resetBtn" class="danger">Zurücksetzen</button>
+
+          <button
+            id="importBtn"
+            class="ghost"
+          >
+            Import
+          </button>
+
+
+          <button
+            id="resetBtn"
+            class="danger"
+          >
+            Zurücksetzen
+          </button>
+
         </div>
 
-        <div id="err" class="small"></div>
+
+        <div
+          id="err"
+          class="small"
+        >
+        </div>
+
       </div>
+
     </section>
 
-    <section id="page-nights" class="page">
-      <div id="orakelBox" class="stack">
-        <div class="card stack oracle-placeholder">
-          <div class="oracle-icon">🔮</div>
-          <h2>Match-Orakel</h2>
-          <p class="small muted">
-            Berechne zuerst die Ergebnisse, um die Analyse zu sehen.
+
+
+    <!-- =========================
+         ORAKEL
+         ========================= -->
+
+    <section
+      id="page-nights"
+      class="page"
+    >
+
+      <div class="page-head">
+
+        <div class="page-head-icon">
+          ✦
+        </div>
+
+        <div>
+
+          <span class="eyebrow">
+            ORACLE
+          </span>
+
+          <h1>
+            Match-Orakel
+          </h1>
+
+          <p>
+            Die heißesten Match-Kandidaten im Überblick.
           </p>
-        </div>
-      </div>
-    </section>
 
-    <section id="page-ergebnisse" class="page">
-      <div class="card stack">
-        <h2>📊 Ergebnisse</h2>
-
-        <div class="row result-controls">
-          <button id="solveBtn" class="primary">Berechnen</button>
-          <span id="status" class="pill">Bereit</span>
         </div>
 
-        <div id="summary" class="stack" style="margin-top:8px"></div>
-        <div id="matrix" class="table-wrap" style="margin-top:10px"></div>
-        <div id="logs" class="stack" style="margin-top:10px"></div>
       </div>
+
+
+      <div
+        id="orakelBox"
+        class="stack"
+      >
+
+        <div class="card oracle-placeholder">
+
+          <div class="oracle-icon">
+            ✦
+          </div>
+
+          <h2>
+            Das Orakel wartet
+          </h2>
+
+          <p class="small muted">
+            Berechne zuerst die Ergebnisse.
+          </p>
+
+        </div>
+
+      </div>
+
     </section>
+
+
+
+    <!-- =========================
+         ERGEBNISSE
+         ========================= -->
+
+    <section
+      id="page-ergebnisse"
+      class="page"
+    >
+
+      <div class="page-head">
+
+        <div class="page-head-icon">
+          ▥
+        </div>
+
+        <div>
+
+          <span class="eyebrow">
+            SOLVER
+          </span>
+
+          <h1>
+            Ergebnisse
+          </h1>
+
+          <p>
+            Wahrscheinlichkeiten und mögliche Kombinationen.
+          </p>
+
+        </div>
+
+      </div>
+
+
+      <div class="card content-card">
+
+        <div class="solve-row">
+
+          <button
+            id="solveBtn"
+            class="solve-button primary"
+          >
+            ✦ Matches berechnen
+          </button>
+
+
+          <span
+            id="status"
+            class="pill"
+          >
+            Bereit
+          </span>
+
+        </div>
+
+
+        <div
+          id="summary"
+          class="stack result-summary"
+        >
+        </div>
+
+
+        <div
+          id="matrix"
+          class="table-wrap"
+        >
+        </div>
+
+
+        <div
+          id="logs"
+          class="stack"
+        >
+        </div>
+
+      </div>
+
+    </section>
+
   </main>
 
-  <nav class="bottom-nav" id="nav">
-    <button class="active" data-target="page-teilnehmer">
-      <span class="icon">👥</span>
-      Teilnehmer
+
+
+  <!-- =========================
+       BOTTOM NAVIGATION
+       ========================= -->
+
+  <nav
+    class="bottom-nav"
+    id="nav"
+  >
+
+
+    <button
+      class="active"
+      data-target="page-teilnehmer"
+    >
+
+      <svg viewBox="0 0 24 24">
+        <path
+          d="M8 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm8 0a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM8 13c-3.3 0-6 1.8-6 4v2h12v-2c0-2.2-2.7-4-6-4Zm8 0c-.7 0-1.3.1-1.9.2 1.2 1 1.9 2.3 1.9 3.8v2h6v-2c0-2.2-2.7-4-6-4Z"
+        />
+      </svg>
+
+      <span>
+        Cast
+      </span>
+
     </button>
 
-    <button data-target="page-matchbox">
-      <span class="icon">💞</span>
-      Matchbox
+
+
+    <button
+      data-target="page-matchbox"
+    >
+
+      <svg viewBox="0 0 24 24">
+        <path
+          d="M12 21.3 10.6 20C5.4 15.4 2 12.3 2 8.5 2 5.4 4.4 3 7.5 3c1.7 0 3.4.8 4.5 2.1C13.1 3.8 14.8 3 16.5 3 19.6 3 22 5.4 22 8.5c0 3.8-3.4 6.9-8.6 11.5L12 21.3Z"
+        />
+      </svg>
+
+      <span>
+        Matchbox
+      </span>
+
     </button>
 
-    <button data-target="page-entscheidungen">
-      <span class="icon">🌙</span>
-      Matchingnight
+
+
+    <button
+      data-target="page-entscheidungen"
+    >
+
+      <svg viewBox="0 0 24 24">
+        <path
+          d="M12.7 2A9 9 0 1 0 22 13.8 7 7 0 0 1 12.7 2Z"
+        />
+      </svg>
+
+      <span>
+        Nights
+      </span>
+
     </button>
 
-    <button data-target="page-nights">
-      <span class="icon">🔮</span>
-      Orakel
+
+
+    <button
+      data-target="page-nights"
+    >
+
+      <svg viewBox="0 0 24 24">
+        <path
+          d="M12 2a8 8 0 0 0-5.3 14L5 22h14l-1.7-6A8 8 0 0 0 12 2Zm0 2a6 6 0 1 1 0 12 6 6 0 0 1 0-12Zm-3 14h6l.6 2H8.4L9 18Z"
+        />
+      </svg>
+
+      <span>
+        Oracle
+      </span>
+
     </button>
 
-    <button data-target="page-ergebnisse">
-      <span class="icon">📊</span>
-      Ergebnisse
+
+
+    <button
+      data-target="page-ergebnisse"
+    >
+
+      <svg viewBox="0 0 24 24">
+        <path
+          d="M3 13h4v8H3v-8Zm7-10h4v18h-4V3Zm7 6h4v12h-4V9Z"
+        />
+      </svg>
+
+      <span>
+        Analyse
+      </span>
+
     </button>
+
   </nav>
 
-  <div id="overlay" aria-hidden="true">
+
+
+  <!-- =========================
+       BERECHNUNGS OVERLAY
+       ========================= -->
+
+  <div
+    id="overlay"
+    aria-hidden="true"
+  >
+
     <div class="overlay-box">
-      <img
-        class="overlay-logo"
-        src="HeaderIcon.png"
-        alt="Are You The One Logo"
-      />
+
+      <div class="solver-orb">
+        ✦
+      </div>
+
+      <span class="eyebrow">
+        MATCH ENGINE
+      </span>
 
       <h3 class="status-text">
         Berechnung läuft... (0%)
       </h3>
 
-      <div class="progress" aria-hidden="true">
-        <div class="bar"></div>
+
+      <div class="progress">
+
+        <div class="bar">
+        </div>
+
       </div>
+
     </div>
+
   </div>
 
-  <script src="app.js?v=2026.08.12.1"></script>
+
+
+  <script
+    src="app.js?v=2026.08.12.3"
+  >
+  </script>
+
 
   <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', async () => {
-        try {
-          const registration =
-            await navigator.serviceWorker.register(
-              'service-worker.js',
-              { updateViaCache: 'none' }
-            );
 
-          await registration.update();
-        } catch (e) {
-          console.log('SW registration failed', e);
+    if ('serviceWorker' in navigator) {
+
+      window.addEventListener(
+        'load',
+        async () => {
+
+          try {
+
+            const registration =
+              await navigator.serviceWorker.register(
+                'service-worker.js',
+                {
+                  updateViaCache: 'none'
+                }
+              );
+
+            await registration.update();
+
+          } catch (e) {
+
+            console.log(
+              'SW registration failed',
+              e
+            );
+          }
         }
-      });
+      );
     }
+
   </script>
+
 </body>
+
 </html>
