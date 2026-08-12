@@ -4764,3 +4764,502 @@ body.modal-open {
   }
 
 }
+/* =========================================================
+   UI V2 - STEP 3
+   Matchbox-Strategie + PM/NM-Simulation
+   ========================================================= */
+
+.oracle-strategy-card {
+  margin-top: 10px;
+  padding: 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,79,168,.14);
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255,79,168,.08),
+      rgba(74,130,255,.09)
+    );
+}
+
+.oracle-strategy-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.oracle-strategy-top > div:first-child {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.oracle-strategy-label {
+  color: #ff7fbe;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 1.25px;
+}
+
+.oracle-strategy-top > div:first-child > strong {
+  margin-top: 4px;
+  font-size: 17px;
+  line-height: 1.15;
+}
+
+.oracle-strategy-top > div:first-child > span:last-child {
+  max-width: 430px;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.oracle-strategy-reduction {
+  flex: 0 0 auto;
+  min-width: 86px;
+  padding: 10px;
+  text-align: center;
+  border-radius: 14px;
+  border:
+    1px solid
+    rgba(255,214,74,.12);
+  background:
+    rgba(255,214,74,.055);
+}
+
+.oracle-strategy-reduction strong {
+  display: block;
+  color: #ffe477;
+  font-size: 18px;
+}
+
+.oracle-strategy-reduction span {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 7px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.oracle-strategy-outcomes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.oracle-strategy-outcome {
+  padding: 11px;
+  border-radius: 14px;
+  border:
+    1px solid
+    rgba(255,255,255,.05);
+}
+
+.oracle-strategy-outcome.pm {
+  background:
+    rgba(37,197,107,.055);
+  border-color:
+    rgba(37,197,107,.10);
+}
+
+.oracle-strategy-outcome.nm {
+  background:
+    rgba(237,64,83,.055);
+  border-color:
+    rgba(237,64,83,.10);
+}
+
+.oracle-strategy-outcome > span {
+  display: block;
+  color: var(--muted);
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: .65px;
+}
+
+.oracle-strategy-outcome strong {
+  display: block;
+  margin-top: 5px;
+  font-size: 16px;
+}
+
+.oracle-strategy-outcome.pm strong {
+  color: #8ef1b3;
+}
+
+.oracle-strategy-outcome.nm strong {
+  color: #ff8d99;
+}
+
+.oracle-strategy-outcome small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.oracle-strategy-button {
+  width: 100%;
+  min-height: 43px;
+  margin-top: 10px;
+  border-radius: 13px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  background:
+    linear-gradient(
+      115deg,
+      #d94696,
+      #7560ff,
+      #3f81ff
+    );
+}
+
+
+/* Simulation Bottom Sheet */
+
+.virtual-test-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background:
+    rgba(4,5,11,.82);
+  backdrop-filter:
+    blur(16px);
+  -webkit-backdrop-filter:
+    blur(16px);
+}
+
+.virtual-test-sheet {
+  width: min(100%, 560px);
+  padding:
+    17px
+    16px
+    calc(
+      16px +
+      env(safe-area-inset-bottom)
+    );
+  border-radius:
+    27px 27px 0 0;
+  border:
+    1px solid
+    rgba(255,255,255,.09);
+  border-bottom: 0;
+  background:
+    linear-gradient(
+      180deg,
+      #1a1e35,
+      #10131f
+    );
+  box-shadow:
+    0 -20px 70px
+    rgba(0,0,0,.45);
+  animation:
+    virtualSheetIn
+    .22s ease;
+}
+
+@keyframes virtualSheetIn {
+
+  from {
+    transform:
+      translateY(25px);
+    opacity: .5;
+  }
+
+  to {
+    transform:
+      translateY(0);
+    opacity: 1;
+  }
+}
+
+.virtual-test-handle {
+  width: 38px;
+  height: 4px;
+  margin:
+    -8px auto 14px;
+  border-radius: 999px;
+  background:
+    rgba(255,255,255,.14);
+}
+
+.virtual-test-eyebrow {
+  color:
+    var(--blue-bright);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 1.4px;
+}
+
+.virtual-test-sheet h2 {
+  margin:
+    4px 0 4px;
+  font-size: 21px;
+}
+
+.virtual-test-sheet > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.virtual-test-existing-hint {
+  margin-top: 12px;
+  padding: 10px 11px;
+  border-radius: 12px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.4;
+  background:
+    rgba(74,130,255,.05);
+  border:
+    1px solid
+    rgba(74,130,255,.08);
+}
+
+.virtual-test-scenarios {
+  display: grid;
+  grid-template-columns:
+    1fr 1fr;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.virtual-test-scenario {
+  padding: 12px;
+  border-radius: 15px;
+}
+
+.virtual-test-scenario.pm {
+  background:
+    rgba(37,197,107,.07);
+  border:
+    1px solid
+    rgba(37,197,107,.12);
+}
+
+.virtual-test-scenario.nm {
+  background:
+    rgba(237,64,83,.07);
+  border:
+    1px solid
+    rgba(237,64,83,.12);
+}
+
+.virtual-test-scenario span {
+  display: block;
+  color: var(--muted);
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: .7px;
+}
+
+.virtual-test-scenario strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 20px;
+}
+
+.virtual-test-scenario.pm strong {
+  color: #8ef1b3;
+}
+
+.virtual-test-scenario.nm strong {
+  color: #ff8d99;
+}
+
+.virtual-test-scenario small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.virtual-test-actions {
+  display: grid;
+  grid-template-columns:
+    1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.virtual-test-button {
+  min-height: 94px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  border-radius: 16px;
+  text-align: left;
+}
+
+.virtual-test-button > span {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.virtual-test-button strong {
+  font-size: 11px;
+}
+
+.virtual-test-button small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.virtual-test-button.pm {
+  background:
+    rgba(37,197,107,.07);
+  border:
+    1px solid
+    rgba(37,197,107,.12);
+}
+
+.virtual-test-button.pm > span {
+  color: #94f3b8;
+  background:
+    rgba(37,197,107,.12);
+}
+
+.virtual-test-button.nm {
+  background:
+    rgba(237,64,83,.07);
+  border:
+    1px solid
+    rgba(237,64,83,.12);
+}
+
+.virtual-test-button.nm > span {
+  color: #ff929d;
+  background:
+    rgba(237,64,83,.12);
+}
+
+.virtual-test-button.active {
+  box-shadow:
+    inset 0 0 0 2px
+    rgba(255,255,255,.18);
+}
+
+.virtual-test-footer {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.virtual-test-cancel,
+.virtual-test-remove {
+  width: 100%;
+  min-height: 42px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.virtual-test-cancel {
+  color: #d9dce6;
+  background:
+    rgba(255,255,255,.055);
+  border:
+    1px solid
+    rgba(255,255,255,.055);
+}
+
+.virtual-test-remove {
+  color: #ff9aa4;
+  background:
+    rgba(237,64,83,.08);
+  border:
+    1px solid
+    rgba(237,64,83,.10);
+}
+
+
+/* PM / NM Markierungen */
+
+.simulation-pairs span.sim-pm {
+  color: #a5f5c2;
+  background:
+    rgba(37,197,107,.10);
+  border:
+    1px solid
+    rgba(37,197,107,.10);
+}
+
+.simulation-pairs span.sim-nm {
+  color: #ff9ca6;
+  background:
+    rgba(237,64,83,.10);
+  border:
+    1px solid
+    rgba(237,64,83,.10);
+}
+
+.matrix-virtual-nm {
+  color: #ffd9de;
+  font-weight: 900;
+  background:
+    linear-gradient(
+      145deg,
+      #8f2738,
+      #5f1e2a
+    );
+  box-shadow:
+    inset 0 0 0 2px
+    rgba(255,255,255,.12);
+}
+
+
+/* iPad */
+
+@media (min-width: 700px) {
+
+  .virtual-test-overlay {
+    align-items: center;
+    padding: 24px;
+  }
+
+  .virtual-test-sheet {
+    border-radius: 27px;
+    border-bottom:
+      1px solid
+      rgba(255,255,255,.09);
+  }
+}
+
+
+/* Kleine iPhones */
+
+@media (max-width: 390px) {
+
+  .oracle-strategy-top {
+    flex-direction: column;
+  }
+
+  .oracle-strategy-reduction {
+    width: 100%;
+  }
+
+  .virtual-test-actions {
+    grid-template-columns:
+      1fr;
+  }
+}
