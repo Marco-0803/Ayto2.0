@@ -6064,3 +6064,1007 @@ renderResults =
       }
     );
   };
+/* =========================================================
+   UI V2 - STEP 4
+   Echte Matchbox-Übernahme + Worst Case + Varianten-Verlauf
+   ========================================================= */
+
+let aytoSimulationHistory = [];
+let aytoSimulationHistoryCounter = 1;
+let aytoSimulationBaselineTotal = null;
+let aytoSimulationContextKey = '';
+
+
+function getAYTORealContextKey() {
+
+  return JSON.stringify({
+
+    participants:
+      getT(),
+
+    matchbox:
+      getMatchbox(),
+
+    nights:
+      getNights()
+  });
+}
+
+
+function getAYTOSimulationKey(
+  matches = virtualMatches
+) {
+
+  return matches
+    .map(
+      match =>
+        `${match.type}|${match.A}|${match.B}`
+    )
+    .sort()
+    .join('||');
+}
+
+
+function getAYTOReductionPercent(
+  start,
+  remaining
+) {
+
+  if (
+    !start ||
+    start <= 0n
+  ) {
+
+    return null;
+  }
+
+
+  const eliminated =
+    start - remaining;
+
+
+  return Number(
+    (
+      eliminated *
+      10000n
+    ) /
+    start
+  ) / 100;
+}
+
+
+function refreshMatchboxViewStep4() {
+
+  const tbList =
+    document.getElementById(
+      'tbList'
+    );
+
+
+  if (!tbList) {
+    return;
+  }
+
+
+  const entries =
+    getMatchbox();
+
+
+  tbList.replaceChildren();
+
+
+  if (!entries.length) {
+
+    const empty =
+      document.createElement(
+        'div'
+      );
+
+    empty.className =
+      'small muted';
+
+    empty.textContent =
+      'Noch keine Einträge';
+
+    tbList.appendChild(
+      empty
+    );
+
+    return;
+  }
+
+
+  entries.forEach(
+    (
+      entry,
+      index
+    ) => {
+
+      const row =
+        document.createElement(
+          'div'
+        );
+
+      row.className =
+        'row';
+
+
+      const content =
+        document.createElement(
+          'div'
+        );
+
+      content.style.flex =
+        '1';
+
+      content.style.display =
+        'flex';
+
+      content.style.alignItems =
+        'center';
+
+      content.style.gap =
+        '8px';
+
+      content.style.flexWrap =
+        'wrap';
+
+
+      const pair =
+        document.createElement(
+          'span'
+        );
+
+
+      const nameA =
+        document.createElement(
+          'b'
+        );
+
+      nameA.textContent =
+        entry.A;
+
+
+      const nameB =
+        document.createElement(
+          'b'
+        );
+
+      nameB.textContent =
+        entry.B;
+
+
+      pair.append(
+        nameA,
+        document.createTextNode(
+          ' × '
+        ),
+        nameB
+      );
+
+
+      const tag =
+        document.createElement(
+          'span'
+        );
+
+      tag.className =
+        'tag';
+
+
+      if (
+        entry.type === 'PM'
+      ) {
+
+        tag.classList.add(
+          'pm'
+        );
+
+        tag.textContent =
+          'Perfect Match';
+
+      } else if (
+        entry.type === 'NM'
+      ) {
+
+        tag.classList.add(
+          'nm'
+        );
+
+        tag.textContent =
+          'No Match';
+
+      } else if (
+        entry.type === 'SOLD'
+      ) {
+
+        tag.classList.add(
+          'sold'
+        );
+
+        tag.textContent =
+          'Verkauft';
+
+      } else {
+
+        tag.classList.add(
+          'neutral'
+        );
+
+        tag.textContent =
+          String(
+            entry.type ||
+            'Unbekannt'
+          );
+      }
+
+
+      const removeButton =
+        document.createElement(
+          'button'
+        );
+
+      removeButton.type =
+        'button';
+
+      removeButton.className =
+        'danger small';
+
+      removeButton.textContent =
+        '✖';
+
+      removeButton.setAttribute(
+        'aria-label',
+        'Matchbox-Eintrag entfernen'
+      );
+
+
+      removeButton.addEventListener(
+        'click',
+        () => {
+
+          const next =
+            getMatchbox();
+
+          next.splice(
+            index,
+            1
+          );
+
+          saveMatchbox(
+            next
+          );
+
+          refreshMatchboxViewStep4();
+        }
+      );
+
+
+      content.append(
+        pair,
+        tag
+      );
+
+
+      row.append(
+        content,
+        removeButton
+      );
+
+
+      tbList.appendChild(
+        row
+      );
+    }
+  );
+}
+
+
+function commitVirtualMatchToMatchbox(
+  nameA,
+  nameB,
+  type
+) {
+
+  if (
+    type !== 'PM' &&
+    type !== 'NM'
+  ) {
+
+    return;
+  }
+
+
+  const entries =
+    getMatchbox()
+      .filter(
+        entry =>
+          !(
+            entry.A === nameA &&
+            entry.B === nameB
+          )
+      );
+
+
+  entries.push({
+
+    A:
+      nameA,
+
+    B:
+      nameB,
+
+    type
+  });
+
+
+  saveMatchbox(
+    entries
+  );
+
+
+  virtualMatches =
+    virtualMatches.filter(
+      match =>
+        !(
+          match.A === nameA &&
+          match.B === nameB
+        )
+    );
+
+
+  aytoSimulationHistory = [];
+  aytoSimulationHistoryCounter = 1;
+  aytoSimulationBaselineTotal = null;
+  aytoSimulationContextKey = '';
+
+
+  refreshMatchboxViewStep4();
+
+
+  document
+    .getElementById(
+      'solveBtn'
+    )
+    ?.click();
+}
+
+
+function recordAYTOSimulationSnapshot(
+  total
+) {
+
+  const contextKey =
+    getAYTORealContextKey();
+
+
+  if (
+    contextKey !==
+    aytoSimulationContextKey
+  ) {
+
+    aytoSimulationContextKey =
+      contextKey;
+
+    aytoSimulationHistory = [];
+
+    aytoSimulationHistoryCounter =
+      1;
+
+    aytoSimulationBaselineTotal =
+      null;
+  }
+
+
+  if (
+    !virtualMatches.length
+  ) {
+
+    aytoSimulationBaselineTotal =
+      total;
+
+    return;
+  }
+
+
+  const key =
+    getAYTOSimulationKey();
+
+
+  const existing =
+    aytoSimulationHistory.find(
+      item =>
+        item.key === key
+    );
+
+
+  if (existing) {
+
+    existing.total =
+      total;
+
+    return;
+  }
+
+
+  aytoSimulationHistory.push({
+
+    id:
+      aytoSimulationHistoryCounter++,
+
+    key,
+
+    total,
+
+    matches:
+      virtualMatches.map(
+        match => ({
+          ...match
+        })
+      )
+  });
+
+
+  if (
+    aytoSimulationHistory.length >
+    8
+  ) {
+
+    aytoSimulationHistory.shift();
+  }
+}
+
+
+function restoreAYTOSimulationSnapshot(
+  snapshot
+) {
+
+  virtualMatches =
+    snapshot.matches.map(
+      match => ({
+        ...match
+      })
+    );
+
+
+  document
+    .getElementById(
+      'solveBtn'
+    )
+    ?.click();
+}
+
+
+function enhanceAYTOSimulationPanel(
+  summaryBox
+) {
+
+  const panel =
+    summaryBox.querySelector(
+      '.simulation-panel'
+    );
+
+
+  if (
+    !panel ||
+    !virtualMatches.length
+  ) {
+
+    return;
+  }
+
+
+  const pairBox =
+    panel.querySelector(
+      '.simulation-pairs'
+    );
+
+
+  if (!pairBox) {
+    return;
+  }
+
+
+  pairBox.classList.add(
+    'simulation-assumption-list'
+  );
+
+
+  pairBox.replaceChildren();
+
+
+  virtualMatches.forEach(
+    match => {
+
+      const row =
+        document.createElement(
+          'div'
+        );
+
+      row.className =
+        'simulation-assumption-row';
+
+
+      const editButton =
+        document.createElement(
+          'button'
+        );
+
+      editButton.type =
+        'button';
+
+      editButton.className =
+        match.type === 'NM'
+          ? 'simulation-assumption-tag nm'
+          : 'simulation-assumption-tag pm';
+
+      editButton.textContent =
+        `${match.type} · ${match.A} × ${match.B}`;
+
+      editButton.addEventListener(
+        'click',
+        () =>
+          openVirtualTestMenu(
+            match.A,
+            match.B
+          )
+      );
+
+
+      const commitButton =
+        document.createElement(
+          'button'
+        );
+
+      commitButton.type =
+        'button';
+
+      commitButton.className =
+        'simulation-commit-button';
+
+      commitButton.textContent =
+        'In Matchbox übernehmen';
+
+      commitButton.addEventListener(
+        'click',
+        () =>
+          commitVirtualMatchToMatchbox(
+            match.A,
+            match.B,
+            match.type
+          )
+      );
+
+
+      row.append(
+        editButton,
+        commitButton
+      );
+
+
+      pairBox.appendChild(
+        row
+      );
+    }
+  );
+}
+
+
+function renderAYTOSimulationHistory(
+  summaryBox
+) {
+
+  summaryBox
+    .querySelector(
+      '.simulation-history-panel'
+    )
+    ?.remove();
+
+
+  if (
+    !aytoSimulationHistory.length
+  ) {
+
+    return;
+  }
+
+
+  const details =
+    document.createElement(
+      'details'
+    );
+
+  details.className =
+    'simulation-history-panel';
+
+
+  const summary =
+    document.createElement(
+      'summary'
+    );
+
+
+  const summaryTitle =
+    document.createElement(
+      'span'
+    );
+
+  summaryTitle.textContent =
+    'Varianten-Verlauf';
+
+
+  const summaryCount =
+    document.createElement(
+      'span'
+    );
+
+  summaryCount.className =
+    'simulation-history-count';
+
+  summaryCount.textContent =
+    `${aytoSimulationHistory.length}`;
+
+
+  summary.append(
+    summaryTitle,
+    summaryCount
+  );
+
+
+  const list =
+    document.createElement(
+      'div'
+    );
+
+  list.className =
+    'simulation-history-list';
+
+
+  const currentKey =
+    getAYTOSimulationKey();
+
+
+  [...aytoSimulationHistory]
+    .reverse()
+    .forEach(
+      snapshot => {
+
+        const row =
+          document.createElement(
+            'div'
+          );
+
+        row.className =
+          snapshot.key === currentKey
+            ? 'simulation-history-row active'
+            : 'simulation-history-row';
+
+
+        const copy =
+          document.createElement(
+            'div'
+          );
+
+        copy.className =
+          'simulation-history-copy';
+
+
+        const title =
+          document.createElement(
+            'strong'
+          );
+
+        title.textContent =
+          `Variante ${snapshot.id}`;
+
+
+        const assumptions =
+          document.createElement(
+            'span'
+          );
+
+        assumptions.textContent =
+          snapshot.matches
+            .map(
+              match =>
+                `${match.type} ${match.A} × ${match.B}`
+            )
+            .join(' · ');
+
+
+        const stats =
+          document.createElement(
+            'small'
+          );
+
+
+        const reduction =
+          aytoSimulationBaselineTotal !== null
+            ? getAYTOReductionPercent(
+                aytoSimulationBaselineTotal,
+                snapshot.total
+              )
+            : null;
+
+
+        stats.textContent =
+          reduction === null
+            ? `${formatAYTOBigInt(snapshot.total)} Lösungen`
+            : `${formatAYTOBigInt(snapshot.total)} Lösungen · ${reduction.toFixed(1)}% weniger`;
+
+
+        copy.append(
+          title,
+          assumptions,
+          stats
+        );
+
+
+        const restore =
+          document.createElement(
+            'button'
+          );
+
+        restore.type =
+          'button';
+
+        restore.className =
+          snapshot.key === currentKey
+            ? 'simulation-history-restore active'
+            : 'simulation-history-restore';
+
+        restore.textContent =
+          snapshot.key === currentKey
+            ? 'Aktiv'
+            : 'Laden';
+
+        restore.disabled =
+          snapshot.key === currentKey;
+
+        restore.addEventListener(
+          'click',
+          () =>
+            restoreAYTOSimulationSnapshot(
+              snapshot
+            )
+        );
+
+
+        row.append(
+          copy,
+          restore
+        );
+
+
+        list.appendChild(
+          row
+        );
+      }
+    );
+
+
+  const clearButton =
+    document.createElement(
+      'button'
+    );
+
+  clearButton.type =
+    'button';
+
+  clearButton.className =
+    'simulation-history-clear';
+
+  clearButton.textContent =
+    'Verlauf leeren';
+
+  clearButton.addEventListener(
+    'click',
+    event => {
+
+      event.preventDefault();
+
+      aytoSimulationHistory = [];
+
+      details.remove();
+    }
+  );
+
+
+  details.append(
+    summary,
+    list,
+    clearButton
+  );
+
+
+  const simulationPanel =
+    summaryBox.querySelector(
+      '.simulation-panel'
+    );
+
+
+  if (simulationPanel) {
+
+    simulationPanel.after(
+      details
+    );
+
+  } else {
+
+    summaryBox.appendChild(
+      details
+    );
+  }
+}
+
+
+/* Worst-Case-Wert im strategischen Orakel */
+
+const step4BaseRenderOrakel =
+  renderOrakel;
+
+
+renderOrakel =
+  function () {
+
+    step4BaseRenderOrakel();
+
+
+    const strategyCard =
+      document.querySelector(
+        '#orakelBox .oracle-strategy-card'
+      );
+
+
+    const best =
+      getBestMatchboxTest();
+
+
+    if (
+      !strategyCard ||
+      !best ||
+      !lastResults ||
+      lastResults.total <= 0n
+    ) {
+
+      return;
+    }
+
+
+    const total =
+      lastResults.total;
+
+
+    const worstCount =
+      best.pmCount > best.nmCount
+        ? best.pmCount
+        : best.nmCount;
+
+
+    const guaranteedReduction =
+      getAYTOReductionPercent(
+        total,
+        worstCount
+      );
+
+
+    const worstCase =
+      document.createElement(
+        'div'
+      );
+
+    worstCase.className =
+      'oracle-worst-case';
+
+
+    const copy =
+      document.createElement(
+        'div'
+      );
+
+
+    const label =
+      document.createElement(
+        'span'
+      );
+
+    label.textContent =
+      'SCHLIMMSTER FALL';
+
+
+    const value =
+      document.createElement(
+        'strong'
+      );
+
+    value.textContent =
+      `${formatAYTOBigInt(worstCount)} Lösungen`;
+
+
+    copy.append(
+      label,
+      value
+    );
+
+
+    const guarantee =
+      document.createElement(
+        'span'
+      );
+
+    guarantee.className =
+      'oracle-worst-guarantee';
+
+    guarantee.textContent =
+      guaranteedReduction === null
+        ? 'Worst-Case nicht berechenbar'
+        : `mindestens ${guaranteedReduction.toFixed(1)}% werden ausgeschlossen`;
+
+
+    worstCase.append(
+      copy,
+      guarantee
+    );
+
+
+    const strategyButton =
+      strategyCard.querySelector(
+        '.oracle-strategy-button'
+      );
+
+
+    if (strategyButton) {
+
+      strategyButton.before(
+        worstCase
+      );
+
+    } else {
+
+      strategyCard.appendChild(
+        worstCase
+      );
+    }
+  };
+
+
+/* Ergebnisansicht um Übernahme + Verlauf erweitern */
+
+const step4BaseRenderResults =
+  renderResults;
+
+
+renderResults =
+  function (
+    total,
+    counts,
+    A,
+    B,
+    summaryBox,
+    matrixBox
+  ) {
+
+    step4BaseRenderResults(
+      total,
+      counts,
+      A,
+      B,
+      summaryBox,
+      matrixBox
+    );
+
+
+    recordAYTOSimulationSnapshot(
+      total
+    );
+
+
+    enhanceAYTOSimulationPanel(
+      summaryBox
+    );
+
+
+    renderAYTOSimulationHistory(
+      summaryBox
+    );
+  };
