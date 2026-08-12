@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta name="app-version" content="2026.01.01.2">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#346FFF"/>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="AYTO Solver 2026">
+  <title>AYTO Solver 2026</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/HeaderIcon.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <img class="logo" src="HeaderIcon.png" alt="Are You The One Logo">
+    <h1>AYTO Solver 2026</h1>
+    <div class="small">Installierbare PWA • Offline nutzbar • /Ayto/</div>
+  </header>
+
+  <main>
+    <section id="page-teilnehmer" class="page active">
+      <div class="card stack">
+        <h2>👥 Teilnehmer</h2>
+        <div class="row">
+          <button id="prefill" class="ghost">🔁 Staffel 2026 vorbelegen </button>
+          <button id="addA" class="ghost">+ A hinzufügen</button>
+          <button id="addB" class="ghost">+ B hinzufügen</button>
+        </div>
+        <div class="row">
+          <div class="stack" style="flex:1">
+            <label>Gruppe A</label>
+            <div id="listA" class="list"></div>
+          </div>
+          <div class="stack" style="flex:1">
+            <label>Gruppe B</label>
+            <div id="listB" class="list"></div>
+          </div>
+        </div>
+        <div id="warnBalance" class="warning small" style="display:none"></div>
+      </div>
+    </section>
+
+    <section id="page-matchbox" class="page">
+      <div class="card stack">
+        <h2>💞 Matchbox</h2>
+        <div class="row">
+          <select id="tbA"></select><span>×</span><select id="tbB"></select>
+          <select id="tbType">
+            <option value="PM">Perfect Match</option>
+            <option value="NM">No Match</option>
+            <option value="SOLD">Sold (nur markieren)</option>
+          </select>
+          <button id="addTB">Hinzufügen</button>
+        </div>
+        <div id="tbList" class="list" style="margin-top:6px"></div>
+      </div>
+    </section>
+
+    <section id="page-entscheidungen" class="page">
+      <div class="card stack">
+        <h2>🌙 Matchingnight</h2>
+        <div class="small muted">Bei 11×10 muss genau <b>eine</b> A-Person ohne Partner bleiben.</div>
+        <div class="row"><button id="addNight" class="ghost">+ Night anlegen</button></div>
+        <div id="nights" class="list" style="margin-top:6px"></div>
+        <div class="row" style="margin-top:8px">
+          <button id="exportBtn">Export</button>
+          <input type="file" id="importFile" style="display:none" />
+          <button id="importBtn">Import</button>
+          <button id="resetBtn" class="danger">Zurücksetzen</button>
+        </div>
+        <div id="err" class="small"></div>
+      </div>
+    </section>
+
+    <section id="page-nights" class="page">
+      <div id="orakelBox" class="stack">
+        <div class="card stack" style="text-align:center; padding: 30px;">
+          <div style="font-size: 3rem;">🔮</div>
+          <h2 style="margin:10px 0">Match-Orakel</h2>
+          <p class="small muted">Berechne zuerst die Ergebnisse, um die Analyse zu sehen.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="page-ergebnisse" class="page">
+      <div class="card stack">
+        <h2>📊 Ergebnisse</h2>
+        <div class="row">
+          <button id="solveBtn" class="primary">Berechnen</button>
+          <span id="status" class="pill">Bereit</span>
+        </div>
+        <div id="summary" class="stack" style="margin-top:8px"></div>
+        <div id="matrix" class="table-wrap" style="margin-top:10px;"></div>
+        <div id="logs" class="stack" style="margin-top:10px"></div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="bottom-nav" id="nav">
+    <button class="active" data-target="page-teilnehmer"><span class="icon">👥</span>Teilnehmer</button>
+    <button data-target="page-matchbox"><span class="icon">💞</span>Matchbox</button>
+    <button data-target="page-entscheidungen"><span class="icon">🌙</span>Matchingnight</button>
+    <button data-target="page-nights"><span class="icon">🔮</span>Orakel</button>
+    <button data-target="page-ergebnisse"><span class="icon">📊</span>Ergebnisse</button>
+  </nav>
+
+  <div id="overlay">
+    <div class="overlay-box">
+      <img class="overlay-logo" src="HeaderIcon.png" alt="Are You The One Logo">
+      <h3 class="status-text">Berechnung läuft... (0%)</h3>
+      <div class="progress">
+        <div class="bar"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+      navigator.serviceWorker.register('service-worker.js').catch(function(e){
+        console.log('SW registration failed', e);
+      });
+    });
+  }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+</body>
+</html>
