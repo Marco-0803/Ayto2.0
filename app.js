@@ -4992,3 +4992,1075 @@ function renderResults(
   matrixBox.style.display =
     'block';
 }
+/* =========================================================
+   UI V2 - STEP 3
+   Matchbox-Strategie + PM/NM-Simulation
+   ========================================================= */
+
+function formatAYTOBigInt(value) {
+  return BigInt(value)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+
+function getPairSnapshot(nameA, nameB) {
+
+  if (
+    !lastResults ||
+    lastResults.total <= 0n
+  ) {
+    return null;
+  }
+
+  const aIndex =
+    lastResults.A.indexOf(nameA);
+
+  const bIndex =
+    lastResults.B.indexOf(nameB);
+
+  if (
+    aIndex < 0 ||
+    bIndex < 0
+  ) {
+    return null;
+  }
+
+  const total =
+    lastResults.total;
+
+  const pmCount =
+    lastResults.counts[aIndex][bIndex];
+
+  const nmCount =
+    total - pmCount;
+
+  const pmProbability =
+    Number(
+      (pmCount * 10000n) /
+      total
+    ) / 100;
+
+  return {
+    total,
+    pmCount,
+    nmCount,
+    pmProbability,
+    nmProbability:
+      100 - pmProbability
+  };
+}
+
+
+function getBestMatchboxTest() {
+
+  if (
+    !lastResults ||
+    lastResults.total <= 1n
+  ) {
+    return null;
+  }
+
+  const blocked =
+    new Set(
+      getMatchbox()
+        .filter(
+          entry =>
+            entry?.A &&
+            entry?.B
+        )
+        .map(
+          entry =>
+            `${entry.A}\u0000${entry.B}`
+        )
+    );
+
+
+  virtualMatches
+    .filter(
+      entry =>
+        entry?.A &&
+        entry?.B
+    )
+    .forEach(
+      entry =>
+        blocked.add(
+          `${entry.A}\u0000${entry.B}`
+        )
+    );
+
+
+  const total =
+    lastResults.total;
+
+  const totalSquared =
+    total * total;
+
+  let best =
+    null;
+
+
+  lastResults.A.forEach(
+    (
+      nameA,
+      i
+    ) => {
+
+      lastResults.B.forEach(
+        (
+          nameB,
+          j
+        ) => {
+
+          if (
+            blocked.has(
+              `${nameA}\u0000${nameB}`
+            )
+          ) {
+            return;
+          }
+
+
+          const pmCount =
+            lastResults.counts[i][j];
+
+
+          if (
+            pmCount <= 0n ||
+            pmCount >= total
+          ) {
+            return;
+          }
+
+
+          const nmCount =
+            total - pmCount;
+
+
+          const expectedRemainingNumerator =
+            (pmCount * pmCount) +
+            (nmCount * nmCount);
+
+
+          const expectedReductionNumerator =
+            totalSquared -
+            expectedRemainingNumerator;
+
+
+          const expectedReduction =
+            Number(
+              (
+                expectedReductionNumerator *
+                10000n
+              ) /
+              totalSquared
+            ) / 100;
+
+
+          const pmProbability =
+            Number(
+              (
+                pmCount *
+                10000n
+              ) /
+              total
+            ) / 100;
+
+
+          const candidate = {
+
+            nameA,
+            nameB,
+
+            pmCount,
+            nmCount,
+
+            pmProbability,
+
+            nmProbability:
+              100 - pmProbability,
+
+            expectedReduction,
+
+            expectedReductionNumerator
+          };
+
+
+          if (
+            !best ||
+            candidate.expectedReductionNumerator >
+              best.expectedReductionNumerator
+          ) {
+
+            best =
+              candidate;
+          }
+        }
+      );
+    }
+  );
+
+
+  return best;
+}
+
+
+function applyVirtualMatch(
+  nameA,
+  nameB,
+  type
+) {
+
+  const {
+    A,
+    B
+  } = getT();
+
+
+  const mode =
+    getSolverMode(
+      A,
+      B
+    );
+
+
+  virtualMatches =
+    virtualMatches.filter(
+      match =>
+        !(
+          match.A === nameA &&
+          match.B === nameB
+        )
+    );
+
+
+  if (
+    type === 'PM'
+  ) {
+
+    virtualMatches =
+      virtualMatches.filter(
+        match =>
+          match.A !== nameA
+      );
+
+
+    if (
+      mode ===
+      'ONE_TO_ONE'
+    ) {
+
+      virtualMatches =
+        virtualMatches.filter(
+          match =>
+            !(
+              match.type === 'PM' &&
+              match.B === nameB
+            )
+        );
+    }
+  }
+
+
+  virtualMatches.push({
+
+    A:
+      nameA,
+
+    B:
+      nameB,
+
+    type
+  });
+
+
+  document
+    .getElementById(
+      'solveBtn'
+    )
+    ?.click();
+}
+
+
+function removeVirtualMatch(
+  nameA,
+  nameB
+) {
+
+  virtualMatches =
+    virtualMatches.filter(
+      match =>
+        !(
+          match.A === nameA &&
+          match.B === nameB
+        )
+    );
+
+
+  document
+    .getElementById(
+      'solveBtn'
+    )
+    ?.click();
+}
+
+
+function openVirtualTestMenu(
+  nameA,
+  nameB
+) {
+
+  const snapshot =
+    getPairSnapshot(
+      nameA,
+      nameB
+    );
+
+
+  if (!snapshot) {
+    return;
+  }
+
+
+  const existing =
+    virtualMatches.find(
+      match =>
+        match.A === nameA &&
+        match.B === nameB
+    );
+
+
+  const overlay =
+    document.createElement(
+      'div'
+    );
+
+  overlay.className =
+    'virtual-test-overlay';
+
+
+  const sheet =
+    document.createElement(
+      'section'
+    );
+
+  sheet.className =
+    'virtual-test-sheet';
+
+  sheet.setAttribute(
+    'role',
+    'dialog'
+  );
+
+  sheet.setAttribute(
+    'aria-modal',
+    'true'
+  );
+
+
+  const close =
+    () => {
+
+      document.body.classList.remove(
+        'modal-open'
+      );
+
+      overlay.remove();
+    };
+
+
+  overlay.addEventListener(
+    'click',
+    event => {
+
+      if (
+        event.target === overlay
+      ) {
+
+        close();
+      }
+    }
+  );
+
+
+  const handle =
+    document.createElement(
+      'div'
+    );
+
+  handle.className =
+    'virtual-test-handle';
+
+
+  const eyebrow =
+    document.createElement(
+      'span'
+    );
+
+  eyebrow.className =
+    'virtual-test-eyebrow';
+
+  eyebrow.textContent =
+    'MATCHBOX-SIMULATION';
+
+
+  const title =
+    document.createElement(
+      'h2'
+    );
+
+  title.textContent =
+    `${nameA} × ${nameB}`;
+
+
+  const probability =
+    document.createElement(
+      'p'
+    );
+
+  probability.textContent =
+    existing
+
+      ? `Aktuell simuliert: ${
+          existing.type === 'PM'
+            ? 'Perfect Match'
+            : 'No Match'
+        }`
+
+      : `Aktuelle PM-Chance: ${
+          snapshot.pmProbability.toFixed(2)
+        } %`;
+
+
+  const actionGrid =
+    document.createElement(
+      'div'
+    );
+
+  actionGrid.className =
+    'virtual-test-actions';
+
+
+  const pmButton =
+    document.createElement(
+      'button'
+    );
+
+  pmButton.type =
+    'button';
+
+  pmButton.className =
+    existing?.type === 'PM'
+
+      ? 'virtual-test-button pm active'
+
+      : 'virtual-test-button pm';
+
+  pmButton.innerHTML =
+    '<span>✓</span><strong>Perfect Match simulieren</strong><small>Paar als sicher annehmen</small>';
+
+
+  const nmButton =
+    document.createElement(
+      'button'
+    );
+
+  nmButton.type =
+    'button';
+
+  nmButton.className =
+    existing?.type === 'NM'
+
+      ? 'virtual-test-button nm active'
+
+      : 'virtual-test-button nm';
+
+  nmButton.innerHTML =
+    '<span>×</span><strong>No Match simulieren</strong><small>Paar ausschließen</small>';
+
+
+  pmButton.addEventListener(
+    'click',
+    () => {
+
+      close();
+
+      applyVirtualMatch(
+        nameA,
+        nameB,
+        'PM'
+      );
+    }
+  );
+
+
+  nmButton.addEventListener(
+    'click',
+    () => {
+
+      close();
+
+      applyVirtualMatch(
+        nameA,
+        nameB,
+        'NM'
+      );
+    }
+  );
+
+
+  actionGrid.append(
+    pmButton,
+    nmButton
+  );
+
+
+  const footer =
+    document.createElement(
+      'div'
+    );
+
+  footer.className =
+    'virtual-test-footer';
+
+
+  const cancelButton =
+    document.createElement(
+      'button'
+    );
+
+  cancelButton.type =
+    'button';
+
+  cancelButton.className =
+    'virtual-test-cancel';
+
+  cancelButton.textContent =
+    'Abbrechen';
+
+  cancelButton.addEventListener(
+    'click',
+    close
+  );
+
+
+  if (existing) {
+
+    const existingHint =
+      document.createElement(
+        'div'
+      );
+
+    existingHint.className =
+      'virtual-test-existing-hint';
+
+    existingHint.textContent =
+      'Wähle eine andere Annahme oder entferne die aktuelle Simulation.';
+
+
+    sheet.append(
+      handle,
+      eyebrow,
+      title,
+      probability,
+      existingHint,
+      actionGrid
+    );
+
+
+    const removeButton =
+      document.createElement(
+        'button'
+      );
+
+    removeButton.type =
+      'button';
+
+    removeButton.className =
+      'virtual-test-remove';
+
+    removeButton.textContent =
+      'Diese Simulation entfernen';
+
+
+    removeButton.addEventListener(
+      'click',
+      () => {
+
+        close();
+
+        removeVirtualMatch(
+          nameA,
+          nameB
+        );
+      }
+    );
+
+
+    footer.append(
+      removeButton,
+      cancelButton
+    );
+
+  } else {
+
+    const scenarioGrid =
+      document.createElement(
+        'div'
+      );
+
+    scenarioGrid.className =
+      'virtual-test-scenarios';
+
+
+    const pmScenario =
+      document.createElement(
+        'div'
+      );
+
+    pmScenario.className =
+      'virtual-test-scenario pm';
+
+    pmScenario.innerHTML =
+      `<span>WENN PM</span>
+       <strong>${snapshot.pmProbability.toFixed(1)}%</strong>
+       <small>${formatAYTOBigInt(snapshot.pmCount)} Lösungen</small>`;
+
+
+    const nmScenario =
+      document.createElement(
+        'div'
+      );
+
+    nmScenario.className =
+      'virtual-test-scenario nm';
+
+    nmScenario.innerHTML =
+      `<span>WENN NM</span>
+       <strong>${snapshot.nmProbability.toFixed(1)}%</strong>
+       <small>${formatAYTOBigInt(snapshot.nmCount)} Lösungen</small>`;
+
+
+    scenarioGrid.append(
+      pmScenario,
+      nmScenario
+    );
+
+
+    sheet.append(
+      handle,
+      eyebrow,
+      title,
+      probability,
+      scenarioGrid,
+      actionGrid
+    );
+
+
+    footer.append(
+      cancelButton
+    );
+  }
+
+
+  sheet.appendChild(
+    footer
+  );
+
+  overlay.appendChild(
+    sheet
+  );
+
+
+  document.body.classList.add(
+    'modal-open'
+  );
+
+  document.body.appendChild(
+    overlay
+  );
+}
+
+
+/* Matrix-Klick öffnet jetzt PM / NM Auswahl */
+
+toggleVirtualMatch =
+  function (
+    nameA,
+    nameB
+  ) {
+
+    openVirtualTestMenu(
+      nameA,
+      nameB
+    );
+  };
+
+
+/* Beste Matchbox-Strategie ins Orakel einfügen */
+
+const step3BaseRenderOrakel =
+  renderOrakel;
+
+
+renderOrakel =
+  function () {
+
+    step3BaseRenderOrakel();
+
+
+    const orakelBox =
+      document.getElementById(
+        'orakelBox'
+      );
+
+
+    if (
+      !orakelBox ||
+      !lastResults ||
+      lastResults.total <= 1n
+    ) {
+
+      return;
+    }
+
+
+    const best =
+      getBestMatchboxTest();
+
+
+    if (!best) {
+      return;
+    }
+
+
+    const card =
+      document.createElement(
+        'div'
+      );
+
+    card.className =
+      'oracle-strategy-card';
+
+
+    const top =
+      document.createElement(
+        'div'
+      );
+
+    top.className =
+      'oracle-strategy-top';
+
+
+    const copy =
+      document.createElement(
+        'div'
+      );
+
+
+    const label =
+      document.createElement(
+        'span'
+      );
+
+    label.className =
+      'oracle-strategy-label';
+
+    label.textContent =
+      'BESTER NÄCHSTER MATCHBOX-TEST';
+
+
+    const names =
+      document.createElement(
+        'strong'
+      );
+
+    names.textContent =
+      `${best.nameA} × ${best.nameB}`;
+
+
+    const description =
+      document.createElement(
+        'span'
+      );
+
+    description.textContent =
+      'Dieser Test reduziert die Zahl der möglichen Gesamtlösungen im Erwartungswert am stärksten.';
+
+
+    copy.append(
+      label,
+      names,
+      description
+    );
+
+
+    const reduction =
+      document.createElement(
+        'div'
+      );
+
+    reduction.className =
+      'oracle-strategy-reduction';
+
+    reduction.innerHTML =
+      `<strong>${best.expectedReduction.toFixed(1)}%</strong>
+       <span>erwartete Reduktion</span>`;
+
+
+    top.append(
+      copy,
+      reduction
+    );
+
+
+    const outcomes =
+      document.createElement(
+        'div'
+      );
+
+    outcomes.className =
+      'oracle-strategy-outcomes';
+
+
+    const pm =
+      document.createElement(
+        'div'
+      );
+
+    pm.className =
+      'oracle-strategy-outcome pm';
+
+    pm.innerHTML =
+      `<span>PERFECT MATCH · ${best.pmProbability.toFixed(1)}%</span>
+       <strong>${formatAYTOBigInt(best.pmCount)}</strong>
+       <small>Lösungen bleiben</small>`;
+
+
+    const nm =
+      document.createElement(
+        'div'
+      );
+
+    nm.className =
+      'oracle-strategy-outcome nm';
+
+    nm.innerHTML =
+      `<span>NO MATCH · ${best.nmProbability.toFixed(1)}%</span>
+       <strong>${formatAYTOBigInt(best.nmCount)}</strong>
+       <small>Lösungen bleiben</small>`;
+
+
+    outcomes.append(
+      pm,
+      nm
+    );
+
+
+    const simulateButton =
+      document.createElement(
+        'button'
+      );
+
+    simulateButton.type =
+      'button';
+
+    simulateButton.className =
+      'oracle-strategy-button';
+
+    simulateButton.textContent =
+      'Szenarien für dieses Paar testen';
+
+
+    simulateButton.addEventListener(
+      'click',
+      () => {
+
+        openVirtualTestMenu(
+          best.nameA,
+          best.nameB
+        );
+      }
+    );
+
+
+    card.append(
+      top,
+      outcomes,
+      simulateButton
+    );
+
+
+    const firstChild =
+      orakelBox.firstElementChild;
+
+
+    if (firstChild) {
+
+      firstChild.after(
+        card
+      );
+
+    } else {
+
+      orakelBox.appendChild(
+        card
+      );
+    }
+  };
+
+
+/* Ergebnisansicht für PM/NM Testmodus erweitern */
+
+const step3BaseRenderResults =
+  renderResults;
+
+
+renderResults =
+  function (
+    total,
+    counts,
+    A,
+    B,
+    summaryBox,
+    matrixBox
+  ) {
+
+    step3BaseRenderResults(
+      total,
+      counts,
+      A,
+      B,
+      summaryBox,
+      matrixBox
+    );
+
+
+    const simulationCopy =
+      summaryBox.querySelector(
+        '.simulation-head > div > span:last-child'
+      );
+
+
+    if (simulationCopy) {
+
+      simulationCopy.textContent =
+        'Virtuelle Matchbox-Annahmen';
+    }
+
+
+    const simulationTags =
+      summaryBox.querySelectorAll(
+        '.simulation-pairs span'
+      );
+
+
+    simulationTags.forEach(
+      (
+        tag,
+        index
+      ) => {
+
+        const match =
+          virtualMatches[index];
+
+
+        if (!match) {
+          return;
+        }
+
+
+        tag.classList.add(
+          match.type === 'NM'
+            ? 'sim-nm'
+            : 'sim-pm'
+        );
+
+
+        tag.textContent =
+          `${match.type} · ${match.A} × ${match.B}`;
+      }
+    );
+
+
+    const hint =
+      summaryBox.querySelector(
+        '.matrix-hint span:last-child'
+      );
+
+
+    if (hint) {
+
+      hint.textContent =
+        'Tippe auf eine Prozentzahl, um Perfect Match oder No Match zu simulieren.';
+    }
+
+
+    const table =
+      matrixBox.querySelector(
+        '.ayto-table'
+      );
+
+
+    if (!table) {
+      return;
+    }
+
+
+    virtualMatches.forEach(
+      match => {
+
+        const aIndex =
+          A.indexOf(
+            match.A
+          );
+
+        const bIndex =
+          B.indexOf(
+            match.B
+          );
+
+
+        if (
+          aIndex < 0 ||
+          bIndex < 0
+        ) {
+
+          return;
+        }
+
+
+        const cell =
+          table.rows[
+            aIndex + 1
+          ]?.cells[
+            bIndex + 1
+          ];
+
+
+        if (!cell) {
+          return;
+        }
+
+
+        if (
+          match.type === 'NM'
+        ) {
+
+          cell.className =
+            'matrix-cell matrix-virtual-nm matrix-cell-clickable';
+
+          cell.textContent =
+            'NM TEST';
+
+        } else {
+
+          cell.className =
+            'matrix-cell matrix-fixed matrix-cell-clickable';
+
+          cell.textContent =
+            'PM TEST';
+        }
+      }
+    );
+  };
