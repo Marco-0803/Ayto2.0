@@ -4093,3 +4093,4 @@ function renderResults(
 
   matrixBox.style.display =
     'block';
+}
