@@ -8296,3 +8296,2861 @@ document.addEventListener(
       );
   }
 );
+/* =========================================================
+   UI V2 - STEP 6
+   TEILNEHMERFOTOS / INDEXEDDB / BACKUP
+   ========================================================= */
+
+const AYTO_PHOTO_DB_NAME = 'aytoMediaDB';
+const AYTO_PHOTO_DB_VERSION = 1;
+const AYTO_PHOTO_STORE = 'participantPhotos';
+const AYTO_PHOTO_SIZE = 512;
+
+let aytoPhotoPickerTarget = null;
+const aytoPhotoUrlCache = new Map();
+
+
+function aytoPhotoId(group, name) {
+
+  return `${group}::${String(name || '')
+    .trim()
+    .toLocaleLowerCase('de-DE')}`;
+}
+
+
+/* =========================================================
+   INDEXED DB
+   ========================================================= */
+
+function aytoOpenPhotoDB() {
+
+  return new Promise(
+    (
+      resolve,
+      reject
+    ) => {
+
+      const request =
+        indexedDB.open(
+          AYTO_PHOTO_DB_NAME,
+          AYTO_PHOTO_DB_VERSION
+        );
+
+
+      request.onupgradeneeded =
+        () => {
+
+          const db =
+            request.result;
+
+
+          if (
+            !db.objectStoreNames
+              .contains(
+                AYTO_PHOTO_STORE
+              )
+          ) {
+
+            db.createObjectStore(
+              AYTO_PHOTO_STORE,
+              {
+                keyPath:
+                  'id'
+              }
+            );
+          }
+        };
+
+
+      request.onsuccess =
+        () =>
+          resolve(
+            request.result
+          );
+
+
+      request.onerror =
+        () =>
+          reject(
+            request.error
+          );
+    }
+  );
+}
+
+
+async function aytoPhotoStoreRequest(
+  mode,
+  action
+) {
+
+  const db =
+    await aytoOpenPhotoDB();
+
+
+  return new Promise(
+    (
+      resolve,
+      reject
+    ) => {
+
+      const tx =
+        db.transaction(
+          AYTO_PHOTO_STORE,
+          mode
+        );
+
+
+      const store =
+        tx.objectStore(
+          AYTO_PHOTO_STORE
+        );
+
+
+      let result;
+
+
+      try {
+
+        result =
+          action(
+            store
+          );
+
+      } catch (err) {
+
+        db.close();
+
+        reject(
+          err
+        );
+
+        return;
+      }
+
+
+      tx.oncomplete =
+        () => {
+
+          db.close();
+
+          resolve(
+            result
+          );
+        };
+
+
+      tx.onerror =
+        () => {
+
+          db.close();
+
+          reject(
+            tx.error
+          );
+        };
+
+
+      tx.onabort =
+        () => {
+
+          db.close();
+
+          reject(
+            tx.error ||
+            new Error(
+              'Foto-Datenbank abgebrochen'
+            )
+          );
+        };
+    }
+  );
+}
+
+
+async function aytoGetPhotoRecord(
+  group,
+  name
+) {
+
+  const id =
+    aytoPhotoId(
+      group,
+      name
+    );
+
+
+  if (!name) {
+
+    return null;
+  }
+
+
+  const db =
+    await aytoOpenPhotoDB();
+
+
+  return new Promise(
+    (
+      resolve,
+      reject
+    ) => {
+
+      const tx =
+        db.transaction(
+          AYTO_PHOTO_STORE,
+          'readonly'
+        );
+
+
+      const request =
+        tx
+          .objectStore(
+            AYTO_PHOTO_STORE
+          )
+          .get(
+            id
+          );
+
+
+      request.onsuccess =
+        () => {
+
+          db.close();
+
+          resolve(
+            request.result ||
+            null
+          );
+        };
+
+
+      request.onerror =
+        () => {
+
+          db.close();
+
+          reject(
+            request.error
+          );
+        };
+    }
+  );
+}
+
+
+async function aytoSavePhotoRecord(
+  group,
+  name,
+  blob
+) {
+
+  const cleanName =
+    String(
+      name ||
+      ''
+    )
+      .trim();
+
+
+  if (
+    !cleanName ||
+    !(blob instanceof Blob)
+  ) {
+
+    throw new Error(
+      'Name oder Bild fehlt'
+    );
+  }
+
+
+  const record = {
+
+    id:
+      aytoPhotoId(
+        group,
+        cleanName
+      ),
+
+    group,
+
+    name:
+      cleanName,
+
+    blob,
+
+    updatedAt:
+      Date.now()
+  };
+
+
+  await aytoPhotoStoreRequest(
+
+    'readwrite',
+
+    store =>
+      store.put(
+        record
+      )
+  );
+
+
+  aytoRevokePhotoUrl(
+    record.id
+  );
+}
+
+
+async function aytoDeletePhotoRecord(
+  group,
+  name
+) {
+
+  if (!name) {
+
+    return;
+  }
+
+
+  const id =
+    aytoPhotoId(
+      group,
+      name
+    );
+
+
+  await aytoPhotoStoreRequest(
+
+    'readwrite',
+
+    store =>
+      store.delete(
+        id
+      )
+  );
+
+
+  aytoRevokePhotoUrl(
+    id
+  );
+}
+
+
+async function aytoMovePhotoRecord(
+  group,
+  oldName,
+  newName
+) {
+
+  const oldClean =
+    String(
+      oldName ||
+      ''
+    )
+      .trim();
+
+
+  const newClean =
+    String(
+      newName ||
+      ''
+    )
+      .trim();
+
+
+  if (
+    !oldClean ||
+    !newClean ||
+    oldClean === newClean
+  ) {
+
+    return;
+  }
+
+
+  const record =
+    await aytoGetPhotoRecord(
+      group,
+      oldClean
+    );
+
+
+  if (
+    !record?.blob
+  ) {
+
+    return;
+  }
+
+
+  await aytoSavePhotoRecord(
+    group,
+    newClean,
+    record.blob
+  );
+
+
+  await aytoDeletePhotoRecord(
+    group,
+    oldClean
+  );
+}
+
+
+async function aytoGetAllPhotoRecords() {
+
+  const db =
+    await aytoOpenPhotoDB();
+
+
+  return new Promise(
+    (
+      resolve,
+      reject
+    ) => {
+
+      const tx =
+        db.transaction(
+          AYTO_PHOTO_STORE,
+          'readonly'
+        );
+
+
+      const request =
+        tx
+          .objectStore(
+            AYTO_PHOTO_STORE
+          )
+          .getAll();
+
+
+      request.onsuccess =
+        () => {
+
+          db.close();
+
+
+          resolve(
+
+            Array.isArray(
+              request.result
+            )
+
+              ? request.result
+
+              : []
+          );
+        };
+
+
+      request.onerror =
+        () => {
+
+          db.close();
+
+          reject(
+            request.error
+          );
+        };
+    }
+  );
+}
+
+
+async function aytoClearAllPhotos() {
+
+  await aytoPhotoStoreRequest(
+
+    'readwrite',
+
+    store =>
+      store.clear()
+  );
+
+
+  for (
+    const url
+    of aytoPhotoUrlCache.values()
+  ) {
+
+    URL.revokeObjectURL(
+      url
+    );
+  }
+
+
+  aytoPhotoUrlCache
+    .clear();
+}
+
+
+/* =========================================================
+   FOTO URL / AVATAR
+   ========================================================= */
+
+function aytoRevokePhotoUrl(
+  id
+) {
+
+  const oldUrl =
+    aytoPhotoUrlCache.get(
+      id
+    );
+
+
+  if (oldUrl) {
+
+    URL.revokeObjectURL(
+      oldUrl
+    );
+
+
+    aytoPhotoUrlCache.delete(
+      id
+    );
+  }
+}
+
+
+async function aytoGetPhotoUrl(
+  group,
+  name
+) {
+
+  if (!name) {
+
+    return null;
+  }
+
+
+  const id =
+    aytoPhotoId(
+      group,
+      name
+    );
+
+
+  if (
+    aytoPhotoUrlCache.has(
+      id
+    )
+  ) {
+
+    return aytoPhotoUrlCache.get(
+      id
+    );
+  }
+
+
+  const record =
+    await aytoGetPhotoRecord(
+      group,
+      name
+    );
+
+
+  if (
+    !record?.blob
+  ) {
+
+    return null;
+  }
+
+
+  const url =
+    URL.createObjectURL(
+      record.blob
+    );
+
+
+  aytoPhotoUrlCache.set(
+    id,
+    url
+  );
+
+
+  return url;
+}
+
+
+function aytoInitials(
+  name
+) {
+
+  const clean =
+    String(
+      name ||
+      ''
+    )
+      .trim();
+
+
+  if (!clean) {
+
+    return '👤';
+  }
+
+
+  return clean
+    .split(
+      /\s+/
+    )
+    .slice(
+      0,
+      2
+    )
+    .map(
+      part =>
+        part
+          .charAt(0)
+          .toUpperCase()
+    )
+    .join('');
+}
+
+
+async function aytoRenderAvatarElement(
+  element,
+  group,
+  name
+) {
+
+  if (!element) {
+
+    return;
+  }
+
+
+  const cleanName =
+    String(
+      name ||
+      ''
+    )
+      .trim();
+
+
+  const token =
+    `${group}|${cleanName}|${Date.now()}|${Math.random()}`;
+
+
+  element.dataset.photoToken =
+    token;
+
+
+  element.dataset.photoGroup =
+    group;
+
+
+  element.dataset.photoName =
+    cleanName;
+
+
+  element.replaceChildren();
+
+  element.classList.remove(
+    'has-photo'
+  );
+
+
+  const fallback =
+    document.createElement(
+      'span'
+    );
+
+
+  fallback.className =
+    'participant-avatar-fallback';
+
+
+  fallback.textContent =
+    aytoInitials(
+      cleanName
+    );
+
+
+  element.appendChild(
+    fallback
+  );
+
+
+  if (!cleanName) {
+
+    return;
+  }
+
+
+  try {
+
+    const url =
+      await aytoGetPhotoUrl(
+        group,
+        cleanName
+      );
+
+
+    if (
+      !url ||
+      element.dataset.photoToken !==
+        token
+    ) {
+
+      return;
+    }
+
+
+    const img =
+      document.createElement(
+        'img'
+      );
+
+
+    img.src =
+      url;
+
+
+    img.alt =
+      cleanName;
+
+
+    img.loading =
+      'lazy';
+
+
+    element.replaceChildren(
+      img
+    );
+
+
+    element.classList.add(
+      'has-photo'
+    );
+
+  } catch (err) {
+
+    console.warn(
+      'Teilnehmerfoto konnte nicht geladen werden:',
+      err
+    );
+  }
+}
+
+
+function aytoCreateAvatarElement(
+  group,
+  name,
+  className = ''
+) {
+
+  const avatar =
+    document.createElement(
+      'div'
+    );
+
+
+  avatar.className =
+    `participant-avatar ${className}`
+      .trim();
+
+
+  aytoRenderAvatarElement(
+    avatar,
+    group,
+    name
+  );
+
+
+  return avatar;
+}
+
+
+function aytoCreatePairAvatars(
+  nameA,
+  nameB
+) {
+
+  const wrap =
+    document.createElement(
+      'div'
+    );
+
+
+  wrap.className =
+    'ayto-pair-avatars';
+
+
+  const avatarA =
+    aytoCreateAvatarElement(
+      'A',
+      nameA,
+      'pair-avatar'
+    );
+
+
+  const avatarB =
+    aytoCreateAvatarElement(
+      'B',
+      nameB,
+      'pair-avatar'
+    );
+
+
+  wrap.append(
+    avatarA,
+    avatarB
+  );
+
+
+  return wrap;
+}
+
+
+/* =========================================================
+   BILDER AKTUALISIEREN
+   ========================================================= */
+
+function aytoRefreshVisibleAvatars() {
+
+  document
+    .querySelectorAll(
+      '[data-photo-group][data-photo-name]'
+    )
+    .forEach(
+      element => {
+
+        aytoRenderAvatarElement(
+
+          element,
+
+          element.dataset.photoGroup,
+
+          element.dataset.photoName
+        );
+      }
+    );
+
+
+  aytoUpdateMatchboxPhotoPreview();
+
+  aytoEnhanceDashboardPhotos();
+
+  aytoEnhanceOraclePhotos();
+}
+
+
+/* =========================================================
+   BILD KOMPRIMIEREN
+   ========================================================= */
+
+function aytoLoadImageElement(
+  file
+) {
+
+  return new Promise(
+    (
+      resolve,
+      reject
+    ) => {
+
+      const url =
+        URL.createObjectURL(
+          file
+        );
+
+
+      const img =
+        new Image();
+
+
+      img.onload =
+        () => {
+
+          resolve({
+            img,
+            url
+          });
+        };
+
+
+      img.onerror =
+        () => {
+
+          URL.revokeObjectURL(
+            url
+          );
+
+
+          reject(
+            new Error(
+              'Bild konnte nicht geöffnet werden'
+            )
+          );
+        };
+
+
+      img.src =
+        url;
+    }
+  );
+}
+
+
+function aytoCanvasToBlob(
+  canvas
+) {
+
+  return new Promise(
+    (
+      resolve,
+      reject
+    ) => {
+
+      canvas.toBlob(
+
+        blob => {
+
+          if (blob) {
+
+            resolve(
+              blob
+            );
+
+          } else {
+
+            reject(
+              new Error(
+                'Bild konnte nicht gespeichert werden'
+              )
+            );
+          }
+        },
+
+        'image/jpeg',
+
+        0.84
+      );
+    }
+  );
+}
+
+
+async function aytoPrepareParticipantPhoto(
+  file
+) {
+
+  if (
+    !file ||
+    !String(
+      file.type ||
+      ''
+    )
+      .startsWith(
+        'image/'
+      )
+  ) {
+
+    throw new Error(
+      'Bitte eine Bilddatei auswählen'
+    );
+  }
+
+
+  const {
+    img,
+    url
+  } =
+    await aytoLoadImageElement(
+      file
+    );
+
+
+  try {
+
+    const sourceSize =
+      Math.min(
+        img.naturalWidth,
+        img.naturalHeight
+      );
+
+
+    const sourceX =
+      (
+        img.naturalWidth -
+        sourceSize
+      ) /
+      2;
+
+
+    const sourceY =
+      (
+        img.naturalHeight -
+        sourceSize
+      ) /
+      2;
+
+
+    const canvas =
+      document.createElement(
+        'canvas'
+      );
+
+
+    canvas.width =
+      AYTO_PHOTO_SIZE;
+
+
+    canvas.height =
+      AYTO_PHOTO_SIZE;
+
+
+    const ctx =
+      canvas.getContext(
+        '2d'
+      );
+
+
+    if (!ctx) {
+
+      throw new Error(
+        'Bildverarbeitung ist auf diesem Gerät nicht verfügbar'
+      );
+    }
+
+
+    ctx.drawImage(
+
+      img,
+
+      sourceX,
+      sourceY,
+
+      sourceSize,
+      sourceSize,
+
+      0,
+      0,
+
+      AYTO_PHOTO_SIZE,
+      AYTO_PHOTO_SIZE
+    );
+
+
+    return await aytoCanvasToBlob(
+      canvas
+    );
+
+  } finally {
+
+    URL.revokeObjectURL(
+      url
+    );
+  }
+}
+
+
+/* =========================================================
+   FOTO PICKER
+   ========================================================= */
+
+function aytoEnsurePhotoPicker() {
+
+  let input =
+    document.getElementById(
+      'aytoParticipantPhotoPicker'
+    );
+
+
+  if (input) {
+
+    return input;
+  }
+
+
+  input =
+    document.createElement(
+      'input'
+    );
+
+
+  input.type =
+    'file';
+
+
+  input.accept =
+    'image/*';
+
+
+  input.id =
+    'aytoParticipantPhotoPicker';
+
+
+  input.hidden =
+    true;
+
+
+  input.addEventListener(
+
+    'change',
+
+    async () => {
+
+      const file =
+        input.files?.[0];
+
+
+      const target =
+        aytoPhotoPickerTarget;
+
+
+      input.value =
+        '';
+
+
+      if (
+        !file ||
+        !target
+      ) {
+
+        return;
+      }
+
+
+      const name =
+        String(
+          target.input?.value ||
+          ''
+        )
+          .trim();
+
+
+      if (!name) {
+
+        alert(
+          'Bitte zuerst einen Namen eintragen.'
+        );
+
+        return;
+      }
+
+
+      try {
+
+        target.avatar
+          ?.classList.add(
+            'is-loading'
+          );
+
+
+        const blob =
+          await aytoPrepareParticipantPhoto(
+            file
+          );
+
+
+        await aytoSavePhotoRecord(
+          target.group,
+          name,
+          blob
+        );
+
+
+        target.row.dataset.photoName =
+          name;
+
+
+        aytoClosePhotoMenu();
+
+
+        aytoRefreshVisibleAvatars();
+
+      } catch (err) {
+
+        alert(
+          `Foto konnte nicht gespeichert werden: ${err.message}`
+        );
+
+      } finally {
+
+        target.avatar
+          ?.classList.remove(
+            'is-loading'
+          );
+
+
+        aytoPhotoPickerTarget =
+          null;
+      }
+    }
+  );
+
+
+  document.body.appendChild(
+    input
+  );
+
+
+  return input;
+}
+
+
+/* =========================================================
+   FOTO MENÜ
+   ========================================================= */
+
+function aytoClosePhotoMenu() {
+
+  document
+    .querySelector(
+      '.participant-photo-overlay'
+    )
+    ?.remove();
+
+
+  document.body
+    .classList.remove(
+      'modal-open'
+    );
+}
+
+
+async function aytoOpenPhotoMenu(
+  group,
+  input,
+  row,
+  avatar
+) {
+
+  const name =
+    String(
+      input?.value ||
+      ''
+    )
+      .trim();
+
+
+  if (!name) {
+
+    alert(
+      'Bitte zuerst einen Namen eintragen.'
+    );
+
+
+    input?.focus();
+
+    return;
+  }
+
+
+  aytoClosePhotoMenu();
+
+
+  const existing =
+    await aytoGetPhotoRecord(
+      group,
+      name
+    );
+
+
+  const overlay =
+    document.createElement(
+      'div'
+    );
+
+
+  overlay.className =
+    'participant-photo-overlay';
+
+
+  const sheet =
+    document.createElement(
+      'section'
+    );
+
+
+  sheet.className =
+    'participant-photo-sheet';
+
+
+  sheet.setAttribute(
+    'role',
+    'dialog'
+  );
+
+
+  sheet.setAttribute(
+    'aria-modal',
+    'true'
+  );
+
+
+  const preview =
+    aytoCreateAvatarElement(
+      group,
+      name,
+      'participant-photo-preview'
+    );
+
+
+  const eyebrow =
+    document.createElement(
+      'span'
+    );
+
+
+  eyebrow.className =
+    'participant-photo-eyebrow';
+
+
+  eyebrow.textContent =
+    'TEILNEHMERFOTO';
+
+
+  const title =
+    document.createElement(
+      'h2'
+    );
+
+
+  title.textContent =
+    name;
+
+
+  const hint =
+    document.createElement(
+      'p'
+    );
+
+
+  hint.textContent =
+    'Das Bild wird automatisch quadratisch zugeschnitten und für die App optimiert.';
+
+
+  const chooseButton =
+    document.createElement(
+      'button'
+    );
+
+
+  chooseButton.type =
+    'button';
+
+
+  chooseButton.className =
+    'participant-photo-primary';
+
+
+  chooseButton.textContent =
+    existing
+
+      ? 'Foto ändern'
+
+      : 'Foto auswählen';
+
+
+  chooseButton.addEventListener(
+
+    'click',
+
+    () => {
+
+      aytoPhotoPickerTarget = {
+
+        group,
+
+        input,
+
+        row,
+
+        avatar
+      };
+
+
+      aytoEnsurePhotoPicker()
+        .click();
+    }
+  );
+
+
+  const actions =
+    document.createElement(
+      'div'
+    );
+
+
+  actions.className =
+    'participant-photo-actions';
+
+
+  if (existing) {
+
+    const removeButton =
+      document.createElement(
+        'button'
+      );
+
+
+    removeButton.type =
+      'button';
+
+
+    removeButton.className =
+      'participant-photo-remove';
+
+
+    removeButton.textContent =
+      'Foto entfernen';
+
+
+    removeButton.addEventListener(
+
+      'click',
+
+      async () => {
+
+        await aytoDeletePhotoRecord(
+          group,
+          name
+        );
+
+
+        aytoClosePhotoMenu();
+
+
+        aytoRefreshVisibleAvatars();
+      }
+    );
+
+
+    actions.appendChild(
+      removeButton
+    );
+  }
+
+
+  const cancelButton =
+    document.createElement(
+      'button'
+    );
+
+
+  cancelButton.type =
+    'button';
+
+
+  cancelButton.className =
+    'participant-photo-cancel';
+
+
+  cancelButton.textContent =
+    'Abbrechen';
+
+
+  cancelButton.addEventListener(
+    'click',
+    aytoClosePhotoMenu
+  );
+
+
+  actions.appendChild(
+    cancelButton
+  );
+
+
+  sheet.append(
+
+    preview,
+
+    eyebrow,
+
+    title,
+
+    hint,
+
+    chooseButton,
+
+    actions
+  );
+
+
+  overlay.appendChild(
+    sheet
+  );
+
+
+  overlay.addEventListener(
+
+    'click',
+
+    event => {
+
+      if (
+        event.target ===
+        overlay
+      ) {
+
+        aytoClosePhotoMenu();
+      }
+    }
+  );
+
+
+  document.body
+    .classList.add(
+      'modal-open'
+    );
+
+
+  document.body.appendChild(
+    overlay
+  );
+}
+
+
+/* =========================================================
+   TEILNEHMERZEILE ERWEITERN
+   ========================================================= */
+
+function aytoDecorateParticipantRow(
+  row,
+  listId
+) {
+
+  if (
+    !row ||
+    row.dataset.photoReady ===
+      '1'
+  ) {
+
+    return;
+  }
+
+
+  const input =
+    row.querySelector(
+      'input'
+    );
+
+
+  if (!input) {
+
+    return;
+  }
+
+
+  const group =
+    listId ===
+      'listA'
+
+      ? 'A'
+
+      : 'B';
+
+
+  row.dataset.photoReady =
+    '1';
+
+
+  row.dataset.photoName =
+    String(
+      input.value ||
+      ''
+    )
+      .trim();
+
+
+  row.classList.add(
+    'photo-person-row'
+  );
+
+
+  const avatarButton =
+    document.createElement(
+      'button'
+    );
+
+
+  avatarButton.type =
+    'button';
+
+
+  avatarButton.className =
+    'participant-avatar participant-avatar-button';
+
+
+  avatarButton.setAttribute(
+
+    'aria-label',
+
+    'Teilnehmerfoto auswählen oder ändern'
+  );
+
+
+  row.insertBefore(
+    avatarButton,
+    input
+  );
+
+
+  const removeParticipantButton =
+    row.querySelector(
+      'button.danger'
+    );
+
+
+  removeParticipantButton
+    ?.addEventListener(
+
+      'click',
+
+      () => {
+
+        const currentName =
+          String(
+            input.value ||
+            ''
+          )
+            .trim();
+
+
+        if (currentName) {
+
+          aytoDeletePhotoRecord(
+            group,
+            currentName
+          )
+            .catch(
+              err =>
+                console.warn(
+                  'Teilnehmerfoto konnte beim Löschen nicht entfernt werden:',
+                  err
+                )
+            );
+        }
+      },
+
+      true
+    );
+
+
+  aytoRenderAvatarElement(
+    avatarButton,
+    group,
+    input.value
+  );
+
+
+  avatarButton.addEventListener(
+
+    'click',
+
+    () =>
+      aytoOpenPhotoMenu(
+
+        group,
+
+        input,
+
+        row,
+
+        avatarButton
+      )
+  );
+
+
+  input.addEventListener(
+
+    'change',
+
+    async () => {
+
+      const oldName =
+        String(
+          row.dataset.photoName ||
+          ''
+        )
+          .trim();
+
+
+      const newName =
+        String(
+          input.value ||
+          ''
+        )
+          .trim();
+
+
+      if (
+        oldName &&
+        newName &&
+        oldName !== newName
+      ) {
+
+        try {
+
+          await aytoMovePhotoRecord(
+
+            group,
+
+            oldName,
+
+            newName
+          );
+
+        } catch (err) {
+
+          console.warn(
+            'Foto konnte beim Umbenennen nicht mitgenommen werden:',
+            err
+          );
+        }
+      }
+
+
+      if (newName) {
+
+        row.dataset.photoName =
+          newName;
+      }
+
+
+      aytoRenderAvatarElement(
+
+        avatarButton,
+
+        group,
+
+        newName
+      );
+
+
+      setTimeout(
+        aytoRefreshVisibleAvatars,
+        0
+      );
+    }
+  );
+}
+
+
+/* Bestehende Teilnehmerfunktion erweitern */
+
+const step6BaseCreatePersonUI =
+  createPersonUI;
+
+
+createPersonUI =
+  function (
+    name,
+    listId
+  ) {
+
+    const list =
+      document.getElementById(
+        listId
+      );
+
+
+    const beforeCount =
+      list?.children.length ||
+      0;
+
+
+    step6BaseCreatePersonUI(
+      name,
+      listId
+    );
+
+
+    if (!list) {
+
+      return;
+    }
+
+
+    const row =
+      list.children[
+        beforeCount
+      ] ||
+      list.lastElementChild;
+
+
+    aytoDecorateParticipantRow(
+      row,
+      listId
+    );
+  };
+
+
+/* =========================================================
+   MATCHBOX FOTOVORSCHAU
+   ========================================================= */
+
+function aytoUpdateMatchboxPhotoPreview() {
+
+  const box =
+    document.getElementById(
+      'aytoMatchboxPhotoPreview'
+    );
+
+
+  const tbA =
+    document.getElementById(
+      'tbA'
+    );
+
+
+  const tbB =
+    document.getElementById(
+      'tbB'
+    );
+
+
+  if (
+    !box ||
+    !tbA ||
+    !tbB
+  ) {
+
+    return;
+  }
+
+
+  box.replaceChildren();
+
+
+  const profileA =
+    document.createElement(
+      'div'
+    );
+
+
+  profileA.className =
+    'matchbox-photo-person';
+
+
+  const avatarA =
+    aytoCreateAvatarElement(
+
+      'A',
+
+      tbA.value,
+
+      'matchbox-photo-avatar'
+    );
+
+
+  const nameA =
+    document.createElement(
+      'strong'
+    );
+
+
+  nameA.textContent =
+    tbA.value ||
+    'Person A';
+
+
+  profileA.append(
+    avatarA,
+    nameA
+  );
+
+
+  const connector =
+    document.createElement(
+      'span'
+    );
+
+
+  connector.className =
+    'matchbox-photo-connector';
+
+
+  connector.textContent =
+    '×';
+
+
+  const profileB =
+    document.createElement(
+      'div'
+    );
+
+
+  profileB.className =
+    'matchbox-photo-person';
+
+
+  const avatarB =
+    aytoCreateAvatarElement(
+
+      'B',
+
+      tbB.value,
+
+      'matchbox-photo-avatar'
+    );
+
+
+  const nameB =
+    document.createElement(
+      'strong'
+    );
+
+
+  nameB.textContent =
+    tbB.value ||
+    'Person B';
+
+
+  profileB.append(
+    avatarB,
+    nameB
+  );
+
+
+  box.append(
+
+    profileA,
+
+    connector,
+
+    profileB
+  );
+}
+
+
+function aytoInitMatchboxPhotoPreview() {
+
+  const tbA =
+    document.getElementById(
+      'tbA'
+    );
+
+
+  const tbB =
+    document.getElementById(
+      'tbB'
+    );
+
+
+  const addTB =
+    document.getElementById(
+      'addTB'
+    );
+
+
+  if (
+    !tbA ||
+    !tbB ||
+    !addTB
+  ) {
+
+    return;
+  }
+
+
+  let box =
+    document.getElementById(
+      'aytoMatchboxPhotoPreview'
+    );
+
+
+  if (!box) {
+
+    box =
+      document.createElement(
+        'div'
+      );
+
+
+    box.id =
+      'aytoMatchboxPhotoPreview';
+
+
+    box.className =
+      'matchbox-photo-preview';
+
+
+    addTB.before(
+      box
+    );
+  }
+
+
+  tbA.addEventListener(
+    'change',
+    aytoUpdateMatchboxPhotoPreview
+  );
+
+
+  tbB.addEventListener(
+    'change',
+    aytoUpdateMatchboxPhotoPreview
+  );
+
+
+  document.addEventListener(
+
+    'teilnehmerChanged',
+
+    () =>
+      setTimeout(
+        aytoUpdateMatchboxPhotoPreview,
+        0
+      )
+  );
+
+
+  aytoUpdateMatchboxPhotoPreview();
+}
+
+
+/* =========================================================
+   MATCHING NIGHT FOTOS
+   ========================================================= */
+
+function aytoEnhanceNightEditorPhotos() {
+
+  document
+    .querySelectorAll(
+      '.night-editor-pair-row'
+    )
+    .forEach(
+      row => {
+
+        if (
+          row.dataset.photoEnhanced ===
+          '1'
+        ) {
+
+          return;
+        }
+
+
+        const person =
+          row.querySelector(
+            '.night-editor-person'
+          );
+
+
+        const name =
+          person
+            ?.querySelector(
+              'strong'
+            )
+            ?.textContent
+            ?.trim();
+
+
+        if (
+          !person ||
+          !name
+        ) {
+
+          return;
+        }
+
+
+        row.dataset.photoEnhanced =
+          '1';
+
+
+        person.classList.add(
+          'night-editor-person-with-photo'
+        );
+
+
+        const avatar =
+          aytoCreateAvatarElement(
+
+            'A',
+
+            name,
+
+            'night-editor-person-avatar'
+          );
+
+
+        person.prepend(
+          avatar
+        );
+      }
+    );
+}
+
+
+const step6BaseOpenNightEditor =
+  openNightEditor;
+
+
+openNightEditor =
+  function (
+    onSaved
+  ) {
+
+    step6BaseOpenNightEditor(
+      onSaved
+    );
+
+
+    setTimeout(
+      aytoEnhanceNightEditorPhotos,
+      0
+    );
+  };
+
+
+/* =========================================================
+   DASHBOARD / ORAKEL FOTOS
+   ========================================================= */
+
+function aytoEnhanceDashboardPhotos() {
+
+  const bestTest =
+    (
+      typeof getBestMatchboxTest ===
+      'function'
+    )
+
+      ? getBestMatchboxTest()
+
+      : null;
+
+
+  const strategyCopy =
+    document.querySelector(
+      '.dash-strategy-main > div:first-child'
+    );
+
+
+  if (
+    bestTest &&
+    strategyCopy &&
+    !strategyCopy.querySelector(
+      '.ayto-pair-avatars'
+    )
+  ) {
+
+    strategyCopy.prepend(
+
+      aytoCreatePairAvatars(
+
+        bestTest.nameA,
+
+        bestTest.nameB
+      )
+    );
+  }
+
+
+  const topPair =
+    (
+      typeof aytoDashboardTopPair ===
+      'function'
+    )
+
+      ? aytoDashboardTopPair()
+
+      : null;
+
+
+  const topCopy =
+    document.querySelector(
+      '.dash-top-match > div:first-child'
+    );
+
+
+  if (
+    topPair &&
+    topCopy &&
+    !topCopy.querySelector(
+      '.ayto-pair-avatars'
+    )
+  ) {
+
+    topCopy.prepend(
+
+      aytoCreatePairAvatars(
+
+        topPair.nameA,
+
+        topPair.nameB
+      )
+    );
+  }
+}
+
+
+function aytoEnhanceOraclePhotos() {
+
+  const topPair =
+    (
+      typeof aytoDashboardTopPair ===
+      'function'
+    )
+
+      ? aytoDashboardTopPair()
+
+      : null;
+
+
+  const bestCardCopy =
+    document.querySelector(
+      '#orakelBox .oracle-best-copy'
+    );
+
+
+  if (
+    topPair &&
+    bestCardCopy &&
+    !bestCardCopy.querySelector(
+      '.ayto-pair-avatars'
+    )
+  ) {
+
+    bestCardCopy.prepend(
+
+      aytoCreatePairAvatars(
+
+        topPair.nameA,
+
+        topPair.nameB
+      )
+    );
+  }
+
+
+  const bestTest =
+    (
+      typeof getBestMatchboxTest ===
+      'function'
+    )
+
+      ? getBestMatchboxTest()
+
+      : null;
+
+
+  const strategyCopy =
+    document.querySelector(
+      '#orakelBox .oracle-strategy-top > div:first-child'
+    );
+
+
+  if (
+    bestTest &&
+    strategyCopy &&
+    !strategyCopy.querySelector(
+      '.ayto-pair-avatars'
+    )
+  ) {
+
+    strategyCopy.prepend(
+
+      aytoCreatePairAvatars(
+
+        bestTest.nameA,
+
+        bestTest.nameB
+      )
+    );
+  }
+}
+
+
+/* Dashboard überschreiben */
+
+if (
+  typeof renderDashboard ===
+  'function'
+) {
+
+  const step6BaseRenderDashboard =
+    renderDashboard;
+
+
+  renderDashboard =
+    function () {
+
+      step6BaseRenderDashboard();
+
+      aytoEnhanceDashboardPhotos();
+    };
+}
+
+
+/* Orakel überschreiben */
+
+const step6BaseRenderOrakel =
+  renderOrakel;
+
+
+renderOrakel =
+  function () {
+
+    step6BaseRenderOrakel();
+
+    aytoEnhanceOraclePhotos();
+  };
+
+
+/* =========================================================
+   BACKUP MIT FOTOS
+   ========================================================= */
+
+function aytoBlobToDataUrl(
+  blob
+) {
+
+  return new Promise(
+    (
+      resolve,
+      reject
+    ) => {
+
+      const reader =
+        new FileReader();
+
+
+      reader.onload =
+        () =>
+          resolve(
+            reader.result
+          );
+
+
+      reader.onerror =
+        () =>
+          reject(
+            reader.error
+          );
+
+
+      reader.readAsDataURL(
+        blob
+      );
+    }
+  );
+}
+
+
+function aytoDataUrlToBlob(
+  dataUrl
+) {
+
+  const [
+    meta,
+    base64
+  ] =
+    String(
+      dataUrl
+    )
+      .split(',');
+
+
+  if (
+    !meta ||
+    !base64
+  ) {
+
+    throw new Error(
+      'Ungültige Bilddaten im Backup'
+    );
+  }
+
+
+  const mimeMatch =
+    meta.match(
+      /^data:(.*?);base64$/
+    );
+
+
+  const mime =
+    mimeMatch?.[1] ||
+    'image/jpeg';
+
+
+  const binary =
+    atob(
+      base64
+    );
+
+
+  const bytes =
+    new Uint8Array(
+      binary.length
+    );
+
+
+  for (
+    let i = 0;
+    i < binary.length;
+    i++
+  ) {
+
+    bytes[i] =
+      binary.charCodeAt(
+        i
+      );
+  }
+
+
+  return new Blob(
+
+    [
+      bytes
+    ],
+
+    {
+      type:
+        mime
+    }
+  );
+}
+
+
+async function aytoExportBackupWithPhotos(
+  event
+) {
+
+  event.preventDefault();
+
+  event.stopImmediatePropagation();
+
+
+  try {
+
+    const records =
+      await aytoGetAllPhotoRecords();
+
+
+    const photos =
+      [];
+
+
+    for (
+      const record
+      of records
+    ) {
+
+      photos.push({
+
+        id:
+          record.id,
+
+        group:
+          record.group,
+
+        name:
+          record.name,
+
+        dataUrl:
+          await aytoBlobToDataUrl(
+            record.blob
+          )
+      });
+    }
+
+
+    const data = {
+
+      version:
+        document
+          .querySelector(
+            'meta[name="app-version"]'
+          )
+          ?.content ||
+        null,
+
+      teilnehmer:
+        getT(),
+
+      matchbox:
+        getMatchbox(),
+
+      nights:
+        getNights(),
+
+      photos
+    };
+
+
+    const blob =
+      new Blob(
+
+        [
+          JSON.stringify(
+            data,
+            null,
+            2
+          )
+        ],
+
+        {
+          type:
+            'application/json'
+        }
+      );
+
+
+    const url =
+      URL.createObjectURL(
+        blob
+      );
+
+
+    const link =
+      document.createElement(
+        'a'
+      );
+
+
+    link.href =
+      url;
+
+
+    link.download =
+      'AYTO_Backup_mit_Fotos.json';
+
+
+    link.click();
+
+
+    setTimeout(
+
+      () =>
+        URL.revokeObjectURL(
+          url
+        ),
+
+      1000
+    );
+
+  } catch (err) {
+
+    alert(
+      `Export fehlgeschlagen: ${err.message}`
+    );
+  }
+}
+
+
+async function aytoImportBackupWithPhotos(
+  event
+) {
+
+  event.stopImmediatePropagation();
+
+
+  const file =
+    event.target.files?.[0];
+
+
+  if (!file) {
+
+    return;
+  }
+
+
+  try {
+
+    const text =
+      await file.text();
+
+
+    const imported =
+      JSON.parse(
+        text
+      );
+
+
+    if (
+      !imported?.teilnehmer ||
+      !Array.isArray(
+        imported.teilnehmer.A
+      ) ||
+      !Array.isArray(
+        imported.teilnehmer.B
+      )
+    ) {
+
+      throw new Error(
+        'Ungültiges AYTO-Backup'
+      );
+    }
+
+
+    localStorage.setItem(
+
+      STORAGE_KEY_T,
+
+      JSON.stringify(
+        imported.teilnehmer
+      )
+    );
+
+
+    localStorage.setItem(
+
+      STORAGE_KEY_MB,
+
+      JSON.stringify(
+
+        Array.isArray(
+          imported.matchbox
+        )
+
+          ? imported.matchbox
+
+          : []
+      )
+    );
+
+
+    localStorage.setItem(
+
+      STORAGE_KEY_NIGHTS,
+
+      JSON.stringify(
+
+        Array.isArray(
+          imported.nights
+        )
+
+          ? imported.nights
+
+          : []
+      )
+    );
+
+
+    await aytoClearAllPhotos();
+
+
+    if (
+      Array.isArray(
+        imported.photos
+      )
+    ) {
+
+      for (
+        const photo
+        of imported.photos
+      ) {
+
+        if (
+          !photo?.group ||
+          !photo?.name ||
+          !photo?.dataUrl
+        ) {
+
+          continue;
+        }
+
+
+        await aytoSavePhotoRecord(
+
+          photo.group,
+
+          photo.name,
+
+          aytoDataUrlToBlob(
+            photo.dataUrl
+          )
+        );
+      }
+    }
+
+
+    location.reload();
+
+  } catch (err) {
+
+    alert(
+      `Import fehlgeschlagen: ${err.message}`
+    );
+  }
+}
+
+
+/* =========================================================
+   RESET MIT FOTOS
+   ========================================================= */
+
+async function aytoResetEverythingWithPhotos(
+  event
+) {
+
+  event.preventDefault();
+
+  event.stopImmediatePropagation();
+
+
+  if (
+    !confirm(
+      'Alle AYTO-Daten inklusive Teilnehmerfotos auf diesem Gerät löschen?'
+    )
+  ) {
+
+    return;
+  }
+
+
+  try {
+
+    localStorage.removeItem(
+      STORAGE_KEY_T
+    );
+
+
+    localStorage.removeItem(
+      STORAGE_KEY_MB
+    );
+
+
+    localStorage.removeItem(
+      STORAGE_KEY_NIGHTS
+    );
+
+
+    if (
+      typeof AYTO_DASH_CACHE_KEY !==
+      'undefined'
+    ) {
+
+      localStorage.removeItem(
+        AYTO_DASH_CACHE_KEY
+      );
+    }
+
+
+    virtualMatches =
+      [];
+
+
+    lastResults =
+      null;
+
+
+    await aytoClearAllPhotos();
+
+
+    location.reload();
+
+  } catch (err) {
+
+    alert(
+      `Zurücksetzen fehlgeschlagen: ${err.message}`
+    );
+  }
+}
+
+
+/* =========================================================
+   EXPORT / IMPORT ÜBERNEHMEN
+   ========================================================= */
+
+function aytoInstallPhotoBackupHooks() {
+
+  const exportButton =
+    document.getElementById(
+      'exportBtn'
+    );
+
+
+  const importFile =
+    document.getElementById(
+      'importFile'
+    );
+
+
+  const resetButton =
+    document.getElementById(
+      'resetBtn'
+    );
+
+
+  exportButton
+    ?.addEventListener(
+
+      'click',
+
+      aytoExportBackupWithPhotos,
+
+      true
+    );
+
+
+  importFile
+    ?.addEventListener(
+
+      'change',
+
+      aytoImportBackupWithPhotos,
+
+      true
+    );
+
+
+  resetButton
+    ?.addEventListener(
+
+      'click',
+
+      aytoResetEverythingWithPhotos,
+
+      true
+    );
+}
+
+
+/* =========================================================
+   START
+   ========================================================= */
+
+document.addEventListener(
+
+  'DOMContentLoaded',
+
+  () => {
+
+    aytoEnsurePhotoPicker();
+
+
+    aytoInitMatchboxPhotoPreview();
+
+
+    aytoInstallPhotoBackupHooks();
+
+
+    document
+      .querySelectorAll(
+        '#listA .person-row'
+      )
+      .forEach(
+        row =>
+          aytoDecorateParticipantRow(
+            row,
+            'listA'
+          )
+      );
+
+
+    document
+      .querySelectorAll(
+        '#listB .person-row'
+      )
+      .forEach(
+        row =>
+          aytoDecorateParticipantRow(
+            row,
+            'listB'
+          )
+      );
+
+
+    setTimeout(
+      aytoRefreshVisibleAvatars,
+      0
+    );
+  }
+);
