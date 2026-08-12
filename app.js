@@ -7068,3 +7068,1231 @@ renderResults =
       summaryBox
     );
   };
+/* =========================================================
+   UI V2 - STEP 5
+   START DASHBOARD
+   ========================================================= */
+
+const AYTO_DASH_CACHE_KEY =
+  'aytoDashboardSolverCacheV1';
+
+
+function aytoDashboardEscape(
+  value
+) {
+
+  return String(
+    value ?? ''
+  )
+    .replaceAll(
+      '&',
+      '&amp;'
+    )
+    .replaceAll(
+      '<',
+      '&lt;'
+    )
+    .replaceAll(
+      '>',
+      '&gt;'
+    )
+    .replaceAll(
+      '"',
+      '&quot;'
+    )
+    .replaceAll(
+      "'",
+      '&#039;'
+    );
+}
+
+
+function aytoDashboardFormatBigInt(
+  value
+) {
+
+  return BigInt(
+    value
+  )
+    .toString()
+    .replace(
+      /\B(?=(\d{3})+(?!\d))/g,
+      '.'
+    );
+}
+
+
+/* Prüft, ob die gespeicherte Analyse
+   noch zu den echten Daten passt */
+
+function aytoDashboardContextKey() {
+
+  return JSON.stringify({
+
+    participants:
+      getT(),
+
+    matchbox:
+      getMatchbox(),
+
+    nights:
+      getNights()
+  });
+}
+
+
+/* Nur echte Solver-Ergebnisse speichern.
+   Simulationen werden NICHT gecacht. */
+
+function aytoDashboardSaveCache() {
+
+  if (
+    !lastResults ||
+    virtualMatches.length
+  ) {
+
+    return;
+  }
+
+
+  try {
+
+    localStorage.setItem(
+
+      AYTO_DASH_CACHE_KEY,
+
+      JSON.stringify({
+
+        context:
+          aytoDashboardContextKey(),
+
+        total:
+          lastResults
+            .total
+            .toString(),
+
+        counts:
+          lastResults
+            .counts
+            .map(
+              row =>
+                row.map(
+                  value =>
+                    value.toString()
+                )
+            ),
+
+        A:
+          [
+            ...lastResults.A
+          ],
+
+        B:
+          [
+            ...lastResults.B
+          ]
+      })
+    );
+
+  } catch (err) {
+
+    console.warn(
+      'Dashboard-Cache konnte nicht gespeichert werden:',
+      err
+    );
+  }
+}
+
+
+/* Letzte gültige Analyse
+   beim Start wiederherstellen */
+
+function aytoDashboardRestoreCache() {
+
+  try {
+
+    const raw =
+      localStorage.getItem(
+        AYTO_DASH_CACHE_KEY
+      );
+
+
+    if (!raw) {
+
+      return false;
+    }
+
+
+    const cached =
+      JSON.parse(
+        raw
+      );
+
+
+    if (
+      !cached ||
+      cached.context !==
+        aytoDashboardContextKey()
+    ) {
+
+      localStorage.removeItem(
+        AYTO_DASH_CACHE_KEY
+      );
+
+      return false;
+    }
+
+
+    lastResults = {
+
+      total:
+        BigInt(
+          cached.total
+        ),
+
+      counts:
+        cached
+          .counts
+          .map(
+            row =>
+              row.map(
+                value =>
+                  BigInt(
+                    value
+                  )
+              )
+          ),
+
+      A:
+        Array.isArray(
+          cached.A
+        )
+          ? cached.A
+          : [],
+
+      B:
+        Array.isArray(
+          cached.B
+        )
+          ? cached.B
+          : []
+    };
+
+
+    return true;
+
+  } catch (err) {
+
+    console.warn(
+      'Dashboard-Cache konnte nicht geladen werden:',
+      err
+    );
+
+
+    localStorage.removeItem(
+      AYTO_DASH_CACHE_KEY
+    );
+
+
+    return false;
+  }
+}
+
+
+/* Sobald echte Eingaben geändert werden,
+   ist die alte Analyse nicht mehr gültig */
+
+function aytoDashboardInvalidateAnalysis() {
+
+  lastResults =
+    null;
+
+
+  localStorage.removeItem(
+    AYTO_DASH_CACHE_KEY
+  );
+
+
+  renderDashboard();
+}
+
+
+/* Stärkste Verbindung finden */
+
+function aytoDashboardTopPair() {
+
+  if (
+    !lastResults ||
+    lastResults.total <= 0n
+  ) {
+
+    return null;
+  }
+
+
+  let best =
+    null;
+
+
+  lastResults.A.forEach(
+    (
+      nameA,
+      i
+    ) => {
+
+      lastResults.B.forEach(
+        (
+          nameB,
+          j
+        ) => {
+
+          const count =
+            lastResults
+              .counts[i][j];
+
+
+          if (
+            count <= 0n
+          ) {
+
+            return;
+          }
+
+
+          const probability =
+            Number(
+              (
+                count *
+                10000n
+              ) /
+              lastResults.total
+            ) /
+            100;
+
+
+          if (
+            !best ||
+            probability >
+              best.probability
+          ) {
+
+            best = {
+
+              nameA,
+
+              nameB,
+
+              probability
+            };
+          }
+        }
+      );
+    }
+  );
+
+
+  return best;
+}
+
+
+/* Zentrale Seitennavigation.
+   Teilnehmer ist Unterseite von Home. */
+
+function goToAYTOPage(
+  pageId
+) {
+
+  document
+    .querySelectorAll(
+      '.page'
+    )
+    .forEach(
+      page => {
+
+        page.classList.toggle(
+          'active',
+          page.id === pageId
+        );
+      }
+    );
+
+
+  const navTarget =
+    pageId ===
+      'page-teilnehmer'
+
+      ? 'page-dashboard'
+
+      : pageId;
+
+
+  document
+    .querySelectorAll(
+      '.bottom-nav button[data-target]'
+    )
+    .forEach(
+      button => {
+
+        button.classList.toggle(
+          'active',
+          button.dataset.target ===
+            navTarget
+        );
+      }
+    );
+
+
+  if (
+    pageId ===
+    'page-nights'
+  ) {
+
+    renderOrakel();
+  }
+
+
+  if (
+    pageId ===
+    'page-dashboard'
+  ) {
+
+    renderDashboard();
+  }
+
+
+  window.scrollTo({
+
+    top:
+      0,
+
+    behavior:
+      'smooth'
+  });
+}
+
+
+/* =========================================================
+   DASHBOARD RENDERN
+   ========================================================= */
+
+function renderDashboard() {
+
+  const box =
+    document.getElementById(
+      'dashboardMain'
+    );
+
+
+  if (!box) {
+
+    return;
+  }
+
+
+  const {
+    A,
+    B
+  } = getT();
+
+
+  const matchbox =
+    getMatchbox();
+
+
+  const nights =
+    getNights();
+
+
+  const pmCount =
+    matchbox.filter(
+      entry =>
+        entry.type ===
+        'PM'
+    ).length;
+
+
+  const analyzed =
+    Boolean(
+      lastResults
+    );
+
+
+  const total =
+    analyzed
+      ? lastResults.total
+      : null;
+
+
+  const bestTest =
+    analyzed &&
+    total > 1n &&
+    typeof getBestMatchboxTest ===
+      'function'
+
+      ? getBestMatchboxTest()
+
+      : null;
+
+
+  const topPair =
+    aytoDashboardTopPair();
+
+
+  const isSimulation =
+    virtualMatches.length >
+    0;
+
+
+  const solutionText =
+    analyzed
+
+      ? aytoDashboardFormatBigInt(
+          total
+        )
+
+      : '–';
+
+
+  const solutionLabel =
+    !analyzed
+
+      ? 'Analyse noch nicht berechnet'
+
+      : total === 0n
+
+        ? 'Aktuelle Daten widersprechen sich'
+
+        : total === 1n
+
+          ? 'Eindeutige Gesamtlösung gefunden'
+
+          : 'Gesamtlösungen passen zu allen Daten';
+
+
+  const stateClass =
+    !analyzed
+
+      ? 'needs-analysis'
+
+      : total === 0n
+
+        ? 'danger'
+
+        : total === 1n
+
+          ? 'success'
+
+          : 'ready';
+
+
+  const stateText =
+    !analyzed
+
+      ? 'Analyse nötig'
+
+      : total === 0n
+
+        ? 'Widerspruch'
+
+        : total === 1n
+
+          ? 'Gelöst'
+
+          : 'Aktuell';
+
+
+  let strategyHtml =
+    '';
+
+
+  if (bestTest) {
+
+    const worstCount =
+      bestTest.pmCount >
+      bestTest.nmCount
+
+        ? bestTest.pmCount
+
+        : bestTest.nmCount;
+
+
+    strategyHtml = `
+
+      <section
+        class="dash-strategy-card"
+      >
+
+        <div
+          class="dash-section-label"
+        >
+          BESTER NÄCHSTER MATCHBOX-TEST
+        </div>
+
+
+        <div
+          class="dash-strategy-main"
+        >
+
+          <div>
+
+            <strong>
+              ${aytoDashboardEscape(
+                bestTest.nameA
+              )}
+              ×
+              ${aytoDashboardEscape(
+                bestTest.nameB
+              )}
+            </strong>
+
+            <span>
+              ${bestTest.expectedReduction.toFixed(1)}%
+              erwartete Reduktion
+            </span>
+
+          </div>
+
+
+          <button
+            id="dashTestBest"
+            type="button"
+          >
+            Testen
+          </button>
+
+        </div>
+
+
+        <div
+          class="dash-strategy-grid"
+        >
+
+          <div class="pm">
+
+            <span>
+              PM ·
+              ${bestTest.pmProbability.toFixed(1)}%
+            </span>
+
+            <strong>
+              ${aytoDashboardFormatBigInt(
+                bestTest.pmCount
+              )}
+            </strong>
+
+            <small>
+              Lösungen
+            </small>
+
+          </div>
+
+
+          <div class="nm">
+
+            <span>
+              NM ·
+              ${bestTest.nmProbability.toFixed(1)}%
+            </span>
+
+            <strong>
+              ${aytoDashboardFormatBigInt(
+                bestTest.nmCount
+              )}
+            </strong>
+
+            <small>
+              Lösungen
+            </small>
+
+          </div>
+
+
+          <div class="worst">
+
+            <span>
+              Worst Case
+            </span>
+
+            <strong>
+              ${aytoDashboardFormatBigInt(
+                worstCount
+              )}
+            </strong>
+
+            <small>
+              Lösungen
+            </small>
+
+          </div>
+
+        </div>
+
+      </section>
+    `;
+
+  } else {
+
+    strategyHtml = `
+
+      <section
+        class="dash-empty-analysis"
+      >
+
+        <span
+          class="dash-empty-orb"
+        >
+          ✦
+        </span>
+
+        <div>
+
+          <strong>
+
+            ${
+              analyzed
+
+                ? 'Kein sinnvoller Test mehr nötig'
+
+                : 'Strategie wartet auf Analyse'
+            }
+
+          </strong>
+
+          <span>
+
+            ${
+              analyzed
+
+                ? 'Die aktuellen Daten sind bereits stark eingegrenzt.'
+
+                : 'Berechne die Matches, dann erscheint hier der beste nächste Matchbox-Test.'
+            }
+
+          </span>
+
+        </div>
+
+      </section>
+    `;
+  }
+
+
+  const topHtml =
+    topPair
+
+      ? `
+
+        <section
+          class="dash-top-match"
+        >
+
+          <div>
+
+            <span
+              class="dash-section-label"
+            >
+              STÄRKSTE VERBINDUNG
+            </span>
+
+            <strong>
+
+              ${aytoDashboardEscape(
+                topPair.nameA
+              )}
+              ×
+              ${aytoDashboardEscape(
+                topPair.nameB
+              )}
+
+            </strong>
+
+            <small>
+              Aktuell höchste Match-Wahrscheinlichkeit
+            </small>
+
+          </div>
+
+
+          <div
+            class="dash-top-percent"
+          >
+            ${topPair.probability.toFixed(1)}%
+          </div>
+
+        </section>
+      `
+
+      : '';
+
+
+  box.innerHTML = `
+
+    <section
+      class="dash-solution-card ${stateClass}"
+    >
+
+      <div
+        class="dash-solution-head"
+      >
+
+        <div>
+
+          <span
+            class="dash-section-label"
+          >
+            MÖGLICHE LÖSUNGEN
+          </span>
+
+          <strong>
+            ${solutionText}
+          </strong>
+
+          <small>
+            ${solutionLabel}
+          </small>
+
+        </div>
+
+
+        <span
+          class="dash-status-pill"
+        >
+          ${stateText}
+        </span>
+
+      </div>
+
+
+      ${
+        isSimulation
+
+          ? `
+
+            <div
+              class="dash-sim-warning"
+            >
+              TESTMODUS AKTIV ·
+              Dashboard zeigt aktuell
+              die simulierte Variante.
+            </div>
+          `
+
+          : ''
+      }
+
+
+      <button
+        id="dashSolveBtn"
+        class="dash-primary-action"
+        type="button"
+      >
+        ✦ Analyse aktualisieren
+      </button>
+
+    </section>
+
+
+
+    <section
+      class="dash-stat-grid"
+    >
+
+      <div class="dash-stat">
+
+        <strong>
+          ${A.length}×${B.length}
+        </strong>
+
+        <span>
+          Teilnehmer
+        </span>
+
+      </div>
+
+
+      <div class="dash-stat">
+
+        <strong>
+          ${matchbox.length}
+        </strong>
+
+        <span>
+          Matchbox
+        </span>
+
+      </div>
+
+
+      <div class="dash-stat">
+
+        <strong>
+          ${nights.length}
+        </strong>
+
+        <span>
+          Nights
+        </span>
+
+      </div>
+
+
+      <div class="dash-stat">
+
+        <strong>
+          ${pmCount}
+        </strong>
+
+        <span>
+          Perfect Matches
+        </span>
+
+      </div>
+
+    </section>
+
+
+
+    <section
+      class="dash-quick-grid"
+    >
+
+      <button
+        id="dashMatchboxBtn"
+        type="button"
+      >
+
+        <span>
+          ♥
+        </span>
+
+        <strong>
+          Matchbox
+        </strong>
+
+        <small>
+          Ergebnis eintragen
+        </small>
+
+      </button>
+
+
+      <button
+        id="dashNightBtn"
+        type="button"
+      >
+
+        <span>
+          ☾
+        </span>
+
+        <strong>
+          Matching Night
+        </strong>
+
+        <small>
+          Night verwalten
+        </small>
+
+      </button>
+
+
+      <button
+        id="dashOracleBtn"
+        type="button"
+      >
+
+        <span>
+          ✦
+        </span>
+
+        <strong>
+          Orakel
+        </strong>
+
+        <small>
+          Strategie ansehen
+        </small>
+
+      </button>
+
+
+      <button
+        id="dashCastBtn"
+        type="button"
+      >
+
+        <span>
+          👥
+        </span>
+
+        <strong>
+          Cast
+        </strong>
+
+        <small>
+          Teilnehmer bearbeiten
+        </small>
+
+      </button>
+
+    </section>
+
+
+    ${strategyHtml}
+
+    ${topHtml}
+  `;
+
+
+  document
+    .getElementById(
+      'dashSolveBtn'
+    )
+    ?.addEventListener(
+      'click',
+      () => {
+
+        goToAYTOPage(
+          'page-ergebnisse'
+        );
+
+
+        setTimeout(
+          () =>
+            document
+              .getElementById(
+                'solveBtn'
+              )
+              ?.click(),
+          80
+        );
+      }
+    );
+
+
+  document
+    .getElementById(
+      'dashMatchboxBtn'
+    )
+    ?.addEventListener(
+      'click',
+      () =>
+        goToAYTOPage(
+          'page-matchbox'
+        )
+    );
+
+
+  document
+    .getElementById(
+      'dashNightBtn'
+    )
+    ?.addEventListener(
+      'click',
+      () =>
+        goToAYTOPage(
+          'page-entscheidungen'
+        )
+    );
+
+
+  document
+    .getElementById(
+      'dashOracleBtn'
+    )
+    ?.addEventListener(
+      'click',
+      () =>
+        goToAYTOPage(
+          'page-nights'
+        )
+    );
+
+
+  document
+    .getElementById(
+      'dashCastBtn'
+    )
+    ?.addEventListener(
+      'click',
+      () =>
+        goToAYTOPage(
+          'page-teilnehmer'
+        )
+    );
+
+
+  document
+    .getElementById(
+      'dashTestBest'
+    )
+    ?.addEventListener(
+      'click',
+      () => {
+
+        if (
+          bestTest &&
+          typeof openVirtualTestMenu ===
+            'function'
+        ) {
+
+          openVirtualTestMenu(
+            bestTest.nameA,
+            bestTest.nameB
+          );
+        }
+      }
+    );
+}
+
+
+/* =========================================================
+   ECHTE DATENÄNDERUNGEN
+   INVALIDIEREN DIE ANALYSE
+   ========================================================= */
+
+const step5SaveT =
+  saveT;
+
+
+saveT =
+  function (
+    data
+  ) {
+
+    step5SaveT(
+      data
+    );
+
+
+    aytoDashboardInvalidateAnalysis();
+  };
+
+
+const step5SaveMatchbox =
+  saveMatchbox;
+
+
+saveMatchbox =
+  function (
+    data
+  ) {
+
+    step5SaveMatchbox(
+      data
+    );
+
+
+    aytoDashboardInvalidateAnalysis();
+  };
+
+
+const step5SaveNights =
+  saveNights;
+
+
+saveNights =
+  function (
+    data
+  ) {
+
+    step5SaveNights(
+      data
+    );
+
+
+    aytoDashboardInvalidateAnalysis();
+  };
+
+
+/* =========================================================
+   NACH JEDER BERECHNUNG
+   DASHBOARD AKTUALISIEREN
+   ========================================================= */
+
+const step5BaseRenderResults =
+  renderResults;
+
+
+renderResults =
+  function (
+    total,
+    counts,
+    A,
+    B,
+    summaryBox,
+    matrixBox
+  ) {
+
+    step5BaseRenderResults(
+      total,
+      counts,
+      A,
+      B,
+      summaryBox,
+      matrixBox
+    );
+
+
+    aytoDashboardSaveCache();
+
+
+    renderDashboard();
+  };
+
+
+/* =========================================================
+   START
+   ========================================================= */
+
+document.addEventListener(
+  'DOMContentLoaded',
+  () => {
+
+    aytoDashboardRestoreCache();
+
+
+    renderDashboard();
+
+
+    document
+      .getElementById(
+        'castBackHome'
+      )
+      ?.addEventListener(
+        'click',
+        () =>
+          goToAYTOPage(
+            'page-dashboard'
+          )
+      );
+
+
+    document
+      .getElementById(
+        'nav'
+      )
+      ?.addEventListener(
+        'click',
+        event => {
+
+          const button =
+            event.target.closest(
+              'button[data-target]'
+            );
+
+
+          if (
+            button?.dataset.target ===
+            'page-dashboard'
+          ) {
+
+            setTimeout(
+              renderDashboard,
+              0
+            );
+          }
+        }
+      );
+  }
+);
